@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Tesseract from 'tesseract.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MdArrowBack, MdClear } from 'react-icons/md';
-import { Loadingscreen } from './Loadingscreen'; // import komponen loading mu
 
+// Fungsi format harga ke ribuan IDR
 function formatPrice(num) {
   return num.toLocaleString('id-ID');
 }
@@ -11,14 +11,15 @@ function formatPrice(num) {
 export const Scannedbill = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [ setOcrText] = useState('');
+  const [ocrText, setOcrText] = useState('');
   const [status, setStatus] = useState('Memuat gambar...');
-  const [billData, setBillData] = useState(null);
+  const [billData, setBillData] = useState(null); // array of {name, quantity, price}
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const image = location.state?.image;
 
+  // Parsing OCR text ke array objek {name, quantity, price}
   const parseOcrTextToBillData = (text) => {
     const lines = text.split('\n').filter(Boolean);
     const items = [];
@@ -47,7 +48,6 @@ export const Scannedbill = () => {
 
     setStatus('Memproses OCR...');
     setLoading(true);
-
     Tesseract.recognize(image, 'eng', {
       logger: m => {
         if (m.status === 'recognizing text') {
@@ -92,11 +92,8 @@ export const Scannedbill = () => {
   }
 
   function handleSaveEdit() {
-    if (
-      billData &&
-      billData.length > 0 &&
-      billData.every(item => item.name.trim() !== '' && item.quantity > 0 && item.price > 0)
-    ) {
+    // Validasi minimal 1 item valid sebelum save
+    if (billData && billData.length > 0 && billData.every(item => item.name.trim() !== '' && item.quantity > 0 && item.price > 0)) {
       setIsEditing(false);
     } else {
       alert('Pastikan semua item memiliki nama, quantity > 0, dan harga > 0');
@@ -120,7 +117,6 @@ export const Scannedbill = () => {
 
   return (
     <div className="p-4 font-sans min-h-screen flex flex-col relative">
-      {loading && <Loadingscreen />}
 
       {/* Header */}
       <div className="flex items-center mb-6">
@@ -147,13 +143,38 @@ export const Scannedbill = () => {
         </p>
       </div>
 
-      {!loading && (
-        <div className="mb-4 text-sm text-gray-700 font-mono">
+      {/* Status & Loading */}
+      <div className="mb-4 text-sm text-gray-700 font-mono">
+        {loading ? (
+          <div className="flex items-center space-x-2">
+            <svg
+              className="animate-spin h-5 w-5 text-green-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              ></path>
+            </svg>
+            <span>{status}</span>
+          </div>
+        ) : (
           <p>{status}</p>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Bill Table */}
+      {/* Bill Data Table */}
       <div className="flex-grow overflow-auto mb-24">
         {!isEditing && billData && (
           <table className="w-full bg-gray-100 rounded text-sm font-mono">
@@ -225,40 +246,65 @@ export const Scannedbill = () => {
                       className="w-full text-right rounded border border-gray-300 p-1"
                     />
                   </td>
-                  <td className="px-3 py-1 text-right">{formatPrice(item.price * item.quantity)}</td>
+                  <td className="px-3 py-1 text-right">
+                    {formatPrice(item.price * item.quantity)}
+                  </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t font-semibold">
+                <td colSpan={3} className="text-right px-3 py-2">Total</td>
+                <td className="text-right px-3 py-2">
+                  {formatPrice(billData.reduce((acc, cur) => acc + cur.price * cur.quantity, 0))}
+                </td>
+              </tr>
+            </tfoot>
           </table>
+        )}
+
+        {/* Kalau OCR text ada tapi parse gagal, tampilkan raw text */}
+        {!billData && !isEditing && (
+          <pre className="bg-gray-100 p-4 rounded whitespace-pre-wrap text-sm font-mono leading-relaxed">
+            {ocrText || 'Tidak ada data bill yang dikenali.'}
+          </pre>
         )}
       </div>
 
-      {/* Action Buttons */}
-      <div className="fixed bottom-4 left-0 right-0 px-4 flex justify-center space-x-4">
-        {!loading && billData && !isEditing && (
-          <>
+      {/* Buttons fixed bottom center */}
+      <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
+        <div className="flex gap-4 max-w-md w-full">
+          {!isEditing && billData && (
             <button
               onClick={handleEditBill}
-              className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition"
+              className="flex-1 black-button font-semibold py-2 rounded shadow transition"
             >
               Edit Bill
             </button>
+          )}
+
+          {isEditing && (
             <button
-              onClick={handleConfirm}
-              className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition"
+              onClick={handleSaveEdit}
+              className="flex-1 green-button font-semibold py-2 rounded shadow transition"
             >
-              Confirm Bill
+              Save
             </button>
-          </>
-        )}
-        {isEditing && (
+          )}
+
           <button
-            onClick={handleSaveEdit}
-            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition"
+            onClick={handleConfirm}
+            disabled={!billData || billData.length === 0}
+            aria-disabled={!billData || billData.length === 0}
+            className={`flex-1 font-semibold py-2 rounded shadow transition ${
+              billData && billData.length > 0
+                ? 'green-button hover:brightness-90'
+                : 'bg-green-400 cursor-not-allowed'
+            }`}
           >
-            Save Edit
+            Split Bill
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
