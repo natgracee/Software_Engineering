@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import { authService } from "../services/authService";
 // import { GoogleLogin } from "@react-oauth/google";
 
 export const Register = () => {
@@ -12,6 +13,7 @@ export const Register = () => {
   });
 
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleInputChange = (e) => {
@@ -27,28 +29,45 @@ export const Register = () => {
     return passwordRegex.test(password);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validatePassword(formData.password)) {
-      setError("The password must be at least 8 characters long and contain at least one uppercase letter.");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Password dan Konfirmasi Password harus sama.");
-      return;
-    }
-
+    setIsLoading(true);
     setError("");
-    console.log("Form submitted:", formData);
 
-    navigate("/login");
+    try {
+      if (!validatePassword(formData.password)) {
+        setError("The password must be at least 8 characters long and contain at least one uppercase letter.");
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        setError("Password Confirmation doesn't match.");
+        return;
+      }
+
+      // Call the register API
+      const response = await authService.register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password
+      });
+
+      console.log("Registration successful:", response);
+      
+      // Show success message and redirect to login
+      alert("Registration successful! Please login.");
+      navigate("/login");
+    } catch (err) {
+      setError(err.message || "Registration failed. Please try again.");
+      console.error("Registration error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // const handleGoogleLogin = (response) => {
   //   console.log("Google login successful:", response);
-  //   // Kirim token atau data ke server untuk proses otentikasi
+  //   // Send token or data to server for authentication
   // };
 
   return (
@@ -64,8 +83,8 @@ export const Register = () => {
         </div>
 
         {error && (
-          <div className="text-red-500 text-sm mb-4">
-            <span>{error}</span>
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
           </div>
         )}
 
@@ -130,10 +149,13 @@ export const Register = () => {
             </Link>
           </div>
 
-          <button type="submit" className="green-button w-full py-3 text-lg font-semibold">
-            Register
+          <button 
+            type="submit" 
+            className="green-button w-full py-3 text-lg font-semibold"
+            disabled={isLoading}
+          >
+            {isLoading ? "Registering..." : "Register"}
           </button>
-
         </form>
       </div>
     </section>
