@@ -67,7 +67,7 @@ export const Register = () => {
 
   // const handleGoogleLogin = (response) => {
   //   console.log("Google login successful:", response);
-  //   // Send token or data to server for authentication
+  //   // Kirim token atau data ke server untuk proses otentikasi
   // };
 
   return (

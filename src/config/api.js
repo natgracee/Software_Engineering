@@ -5,15 +5,22 @@ const api = axios.create({
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Accept': 'application/json'
     },
     timeout: 10000
 });
 
-
+// Request interceptor
 api.interceptors.request.use(
     (config) => {
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        
+        // If token exists, add it to the headers
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+
         console.log('Making request:', {
             url: config.url,
             method: config.method,
@@ -28,7 +35,7 @@ api.interceptors.request.use(
     }
 );
 
-
+// Response interceptor
 api.interceptors.response.use(
     (response) => {
         console.log('Response received:', {
@@ -46,6 +53,13 @@ api.interceptors.response.use(
             message: error.message,
             response: error.response?.data
         });
+
+        // Handle 401 Unauthorized errors
+        if (error.response?.status === 401) {
+            // Clear token and redirect to login
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
 
         if (error.message === 'Network Error') {
             console.error('Network Error Details:', {

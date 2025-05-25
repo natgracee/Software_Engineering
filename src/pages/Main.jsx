@@ -1,11 +1,11 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { MdOutlineAccountCircle, MdOutlineNotifications, MdPayments } from "react-icons/md";
 import { GroupItem } from "./Groupitem";
+import { useUser } from "../context/UserContext";
 
 export const Main = () => {
-  const location = useLocation();
-  const username = location.state?.username || "Guest";
-  const { newGroup } = location.state || {};
+  const { user } = useUser();
+  const username = user?.username || "Guest";
 
   const groups = [
     { name: "Group 1", inviteLink: "http://example.com/invite1" },
@@ -46,22 +46,6 @@ export const Main = () => {
         </button>
         </Link>
       </div>
-
-      {/* New Group Created Section */}
-      {newGroup && (
-        <div className="bg-green-100 p-4 rounded-lg shadow-lg mb-6">
-          <h3 className="font-bold text-lg">New Group Created!</h3>
-          <p className="mt-2">Group Name: {newGroup.name}</p>
-          {newGroup.profilePic && (
-            <img
-              src={URL.createObjectURL(newGroup.profilePic)}
-              alt="Group Profile"
-              className="mt-4 w-20 h-20 object-cover rounded-full"
-            />
-          )}
-          <p className="mt-2 text-sm text-gray-600">Invite Link: {newGroup.inviteLink}</p>
-        </div>
-      )}
 
       {/* Group List */}
       <div className="bg-green-100 rounded-xl shadow-xl overflow-hidden p-6 mt-6 h-screen">

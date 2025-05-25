@@ -24,7 +24,27 @@ export const authService = {
     // get user profile
     async getUserProfile() {
         try {
-            const response = await api.get('/dashboard');
+            const response = await api.get('/auth/profile');
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    // update user profile
+    async updateProfile(profileData) {
+        try {
+            const response = await api.put('/auth/profile', profileData);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    // delete user account
+    async deleteAccount() {
+        try {
+            const response = await api.delete('/auth/profile');
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -34,8 +54,8 @@ export const authService = {
     // logout function
     async logout() {
         try {
-            const response = await api.post('/auth/logout');
-            return response.data;
+            localStorage.removeItem('token');
+            return { message: 'Logged out successfully' };
         } catch (error) {
             throw error.response?.data || error.message;
         }
