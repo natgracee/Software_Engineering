@@ -89,5 +89,15 @@ export const authService = {
         } catch (error) {
             throw error.response?.data || error.message;
         }
+    },
+
+    // function for a user to join a group
+    async joinGroup(groupId) {
+        try {
+            const response = await api.post(`/auth/groups/${groupId}/join`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
     }
 }; 

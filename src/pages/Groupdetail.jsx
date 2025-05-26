@@ -7,7 +7,8 @@ import {
   MdQrCodeScanner,
   MdEdit,
   MdCheck,
-  MdClose
+  MdClose,
+  MdContentCopy
 } from 'react-icons/md';
 import { authService } from '../services/authService';
 
@@ -24,6 +25,7 @@ export const Groupdetail = () => {
   const [editedName, setEditedName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [inviteLink, setInviteLink] = useState('');
 
   const [showGalleryScan, setShowGalleryScan] = useState(false);
   const [selectedGalleryFile, setSelectedGalleryFile] = useState(null);
@@ -36,6 +38,7 @@ export const Groupdetail = () => {
         const fetchedGroup = await authService.getGroupById(id);
         setGroup(fetchedGroup);
         setEditedName(fetchedGroup.group_name);
+        setInviteLink(`${window.location.origin}/join/${fetchedGroup.group_id}`);
       } catch (err) {
         console.error('Error fetching group details:', err);
         setError('Failed to load group details.');
@@ -65,6 +68,11 @@ export const Groupdetail = () => {
     reader.onloadend = () => {
     };
     reader.readAsDataURL(file);
+  };
+
+  const copyInviteLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    alert('Invite link copied to clipboard!');
   };
 
   if (loading) {
@@ -132,7 +140,7 @@ export const Groupdetail = () => {
             disabled={loading}
           />
 
-          <p className="text-sm text-gray-500 mt-2">{/*group.members.length*/ 0} members</p>
+          <p className="text-sm text-gray-500 mt-2">{group.members?.length || 0} members</p>
 
           <button
             onClick={() => setShowMembers(!showMembers)}
@@ -142,14 +150,36 @@ export const Groupdetail = () => {
             {showMembers ? 'Hide Members' : 'Show Members'}
           </button>
 
-          {showMembers && (
+          {showMembers && group.members && (
             <div className="mt-4 text-left w-full">
               <p className="font-semibold mb-2">Members:</p>
               <ul>
-                {/* {group.members.map((member, index) => (
-                  <li key={index} className="text-sm text-gray-700">{member}</li>
-                ))} */}
+                {group.members.map((member) => (
+                  <li key={member.id} className="text-sm text-gray-700">{member.username}</li>
+                ))}
               </ul>
+            </div>
+          )}
+
+          {inviteLink && (
+            <div className="mt-4 w-full text-left">
+              <p className="text-sm font-semibold text-gray-700 mb-1">Invite Link:</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded text-sm text-gray-600"
+                  value={inviteLink}
+                  readOnly
+                />
+                <button
+                  onClick={copyInviteLink}
+                  className="bg-green-500 text-white px-3 py-2 rounded flex items-center space-x-1 hover:bg-green-600"
+                  disabled={loading}
+                >
+                  <MdContentCopy size={16} />
+                  <span>Copy</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

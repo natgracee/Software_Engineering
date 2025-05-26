@@ -9,6 +9,7 @@ import { Account } from "./pages/Account";
 import { Grouplist } from "./pages/Grouplist";
 import { Newgroup } from "./pages/Newgroup";
 import { Groupdetail } from './pages/Groupdetail';
+import { JoinGroup } from './pages/JoinGroup';
 // import { Scanresult } from "./pages/Scanresult";
 import { Quickscan } from './pages/Quickscan';
 import { GalleryScan } from "./pages/Galleryscan";
@@ -31,6 +32,7 @@ function App() {
             <Route path="/grouplist" element={<Grouplist />} />
             <Route path="/newgroup" element={<Newgroup />} />
             <Route path="/group/:id" element={<Groupdetail />} />
+            <Route path="/join/:groupId" element={<JoinGroup />} />
             {/* <Route path="/scanresult" element={<Scanresult />} />/ */}
             <Route path="/quickscan" element={<Quickscan />} />
             <Route path="/galleryscan" element={<GalleryScan />} />
