@@ -1,14 +1,37 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MdAdd, MdArrowBack } from 'react-icons/md';
+import { authService } from '../services/authService';
+import { useUser } from '../context/UserContext';
 
 export const Grouplist = () => {
   const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useUser();
 
   useEffect(() => {
-    const storedGroups = JSON.parse(localStorage.getItem('groups')) || [];
-    setGroups(storedGroups);
-  }, []);
+    const fetchUserGroups = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const userGroups = await authService.getUserGroups();
+        setGroups(userGroups);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching user groups:', err);
+        setError('Failed to load groups.');
+        setGroups([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserGroups();
+  }, [user]); // Refetch groups when user changes
 
   return (
     <section className="px-4 py-6">
@@ -23,16 +46,20 @@ export const Grouplist = () => {
         <h1 className="text-xl font-semibold text-center w-full">Grouplist</h1>
       </div>
 
-      <p className='text-sm mb-10'> Start by choosing a group you'd like to use. Don’t have one yet? Create a new group to split the bill with your friends! </p>
+      <p className='text-sm mb-10'> Start by choosing a group you'd like to use. Don't have one yet? Create a new group to split the bill with your friends! </p>
       {/* Group List */}
       <div className="bg-gray-100 p-6 rounded-lg shadow-sm space-y-4 max-h-[32rem] overflow-y-auto w-full">
-        {groups.length === 0 ? (
+        {loading ? (
+          <p className="text-center text-gray-600">Loading groups...</p>
+        ) : error ? (
+          <p className="text-center text-red-600">{error}</p>
+        ) : groups.length === 0 ? (
           <p className="text-center text-gray-600">No groups yet. Add a group!</p>
         ) : (
-          groups.map((group, index) => (
+          groups.map((group) => (
             <Link
-              key={index}
-              to={`/group/${index}`}
+              key={group.group_id}
+              to={`/group/${group.group_id}`}
               className="block"
             >
               <div className="flex items-center bg-white p-5 rounded-lg shadow border w-full hover:bg-gray-50 transition-colors">
@@ -45,7 +72,7 @@ export const Grouplist = () => {
                   />
                 ) : (
                   <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 mr-5">
-                    {group.name?.charAt(0).toUpperCase()}
+                    {group.group_name?.charAt(0).toUpperCase()}
                   </div>
                 )}
 
@@ -53,17 +80,19 @@ export const Grouplist = () => {
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex justify-between items-center">
                     <h2 className="text-lg font-semibold text-gray-900">
-                      {group.name}
+                      {group.group_name}
                     </h2>
-                    {group.isNew && (
+                    {/* Assuming isNew is not returned by the backend yet */}
+                    {/* {group.isNew && (
                       <span className="text-xs text-white bg-green-500 px-2 py-0.5 rounded">
                         New!
                       </span>
-                    )}
+                    )} */}
                   </div>
-                  <p className="text-sm text-gray-600">
+                  {/* Assuming members are not returned by the backend endpoint yet */}
+                  {/* <p className="text-sm text-gray-600">
                     {group.members.join(', ')}
-                  </p>
+                  </p> */}
                 </div>
               </div>
             </Link>

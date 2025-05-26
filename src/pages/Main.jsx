@@ -2,17 +2,39 @@ import { Link } from "react-router-dom";
 import { MdOutlineAccountCircle, MdOutlineNotifications, MdPayments } from "react-icons/md";
 import { GroupItem } from "./Groupitem";
 import { useUser } from "../context/UserContext";
+import { useEffect, useState } from "react";
+import { authService } from "../services/authService";
 
 export const Main = () => {
   const { user } = useUser();
   const username = user?.username || "Guest";
+  const [groups, setGroups] = useState([]);
+  const [loadingGroups, setLoadingGroups] = useState(true);
+  const [errorLoadingGroups, setErrorLoadingGroups] = useState(null);
 
-  const groups = [
-    { name: "Group 1", inviteLink: "http://example.com/invite1" },
-    { name: "Group 2", inviteLink: "http://example.com/invite2" },
-    { name: "Group 3", inviteLink: "http://example.com/invite3" },
-    // Bisa ditambahkan grup lainnya
-  ];
+  useEffect(() => {
+    const fetchUserGroups = async () => {
+      if (!user) {
+        setLoadingGroups(false);
+        return;
+      }
+      try {
+        setLoadingGroups(true);
+        const userGroups = await authService.getUserGroups();
+        // Assuming the backend returns groups with id and name
+        setGroups(userGroups);
+        setErrorLoadingGroups(null);
+      } catch (err) {
+        console.error("Error fetching user groups:", err);
+        setErrorLoadingGroups("Failed to load groups.");
+        setGroups([]);
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+
+    fetchUserGroups();
+  }, [user]); // Refetch groups when user changes
 
   return (
     <section className="min-h-screen flex flex-col px-4 sm:px-8 md:px-16 lg:px-40">
@@ -57,9 +79,22 @@ export const Main = () => {
         </div>
 
         <div className="p-4 rounded-lg shadow-sm space-y-2 max-h-80 sm:max-h-[400px] lg:max-h-[500px] xl:max-h-[600px] overflow-y-auto">
-          {groups.map((group, index) => (
-            <GroupItem key={index} groupName={group.name} inviteLink={group.inviteLink} />
-          ))}
+          {loadingGroups ? (
+            <p className="text-center text-gray-600">Loading groups...</p>
+          ) : errorLoadingGroups ? (
+            <p className="text-center text-red-600">{errorLoadingGroups}</p>
+          ) : groups.length === 0 ? (
+            <p className="text-center text-gray-600">No groups yet. Create one!</p>
+          ) : (
+            groups.map((group) => (
+              <GroupItem 
+                key={group.group_id} 
+                id={group.group_id}
+                groupName={group.group_name} 
+                inviteLink={null} // Assuming inviteLink is not returned by the backend endpoint yet
+              />
+            ))
+          )}
         </div>
 
         {/* Create Group Button

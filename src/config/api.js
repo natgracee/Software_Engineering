@@ -54,9 +54,8 @@ api.interceptors.response.use(
             response: error.response?.data
         });
 
-        // Handle 401 Unauthorized errors
-        if (error.response?.status === 401) {
-            // Clear token and redirect to login
+        // Only redirect to login if it's not a login request
+        if (error.response?.status === 401 && !error.config?.url.includes('/auth/login')) {
             localStorage.removeItem('token');
             window.location.href = '/login';
         }

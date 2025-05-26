@@ -59,5 +59,35 @@ export const authService = {
         } catch (error) {
             throw error.response?.data || error.message;
         }
+    },
+
+    // function to get user's groups
+    async getUserGroups() {
+        try {
+            const response = await api.get('/auth/groups');
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    // function to create a group
+    async createGroup(groupData) {
+        try {
+            const response = await api.post('/auth/groups', groupData);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    // function to get a single group by ID
+    async getGroupById(groupId) {
+        try {
+            const response = await api.get(`/auth/groups/${groupId}`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
     }
 }; 

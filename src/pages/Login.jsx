@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
+import { useUser } from "../context/UserContext";
 
 export const Login = () => {
   const [formData, setFormData] = useState({
@@ -10,8 +11,8 @@ export const Login = () => {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
   const navigate = useNavigate();
+  const { updateUser } = useUser();
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -37,8 +38,10 @@ export const Login = () => {
       // Store the token in localStorage
       if (response.token) {
         localStorage.setItem('token', response.token);
+        // Update the user context with the user data
+        updateUser(response.user);
+        navigate("/main");
       }
-      navigate("/main", { state: { username: formData.username } });
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Invalid username or password");

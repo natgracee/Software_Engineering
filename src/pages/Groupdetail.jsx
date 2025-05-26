@@ -9,6 +9,7 @@ import {
   MdCheck,
   MdClose
 } from 'react-icons/md';
+import { authService } from '../services/authService';
 
 export const Groupdetail = () => {
   const { id } = useParams();
@@ -21,108 +22,84 @@ export const Groupdetail = () => {
   const [showMembers, setShowMembers] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [editedName, setEditedName] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [showGalleryScan, setShowGalleryScan] = useState(false);
   const [selectedGalleryFile, setSelectedGalleryFile] = useState(null);
 
-  // Ambil data grup dari localStorage saat komponen mount atau id berubah
   useEffect(() => {
-    const storedGroups = JSON.parse(localStorage.getItem('groups')) || [];
-    const selectedGroup = storedGroups.find((g, i) => g.id === id || i.toString() === id);
-    setGroup(selectedGroup || null);
-    setShowMembers(false);
-    setEditIndex(null);
-    setEditedName('');
+    const fetchGroup = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedGroup = await authService.getGroupById(id);
+        setGroup(fetchedGroup);
+        setEditedName(fetchedGroup.group_name);
+      } catch (err) {
+        console.error('Error fetching group details:', err);
+        setError('Failed to load group details.');
+        setGroup(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroup();
   }, [id]);
 
-  // Fungsi update group di localStorage dan state
-  const updateGroupInStorage = (updatedGroup) => {
-    setLoading(true);
-    const groups = JSON.parse(localStorage.getItem('groups')) || [];
-    const index = groups.findIndex((g, i) => g.id === id || i.toString() === id);
-    if (index !== -1) {
-      groups[index] = updatedGroup;
-      localStorage.setItem('groups', JSON.stringify(groups));
-      setGroup(updatedGroup);
-    }
-    setLoading(false);
+  const handleConfirmEdit = () => {
+    setEditIndex(null);
   };
 
-  // Handle input foto dari kamera langsung (file input)
+  const handleCancelEdit = () => {
+    setEditedName(group?.group_name || '');
+    setEditIndex(null);
+  };
+
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const updatedGroup = { ...group, photo: reader.result };
-      updateGroupInStorage(updatedGroup);
     };
     reader.readAsDataURL(file);
-    e.target.value = null; // reset input agar bisa upload file sama lagi
   };
 
+  if (loading) {
+    return (
+      <section className="px-4 py-6 min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading group...</div>
+      </section>
+    );
+  }
 
-  // Setelah user pilih foto dari galeri, simpan file dan tampilkan GalleryScan
-  const handleGalleryChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setSelectedGalleryFile(file);
-    setShowGalleryScan(true);
-
-    e.target.value = null; // reset input
-  };
-
-  // Callback dari GalleryScan setelah selesai scan bill
-  const handleGalleryScanComplete = (textResult) => {
-    setShowGalleryScan(false);
-    setSelectedGalleryFile(null);
-
-    // Contoh: kamu bisa simpan hasil scan ke state grup, atau tampilkan hasil, dll.
-    alert('Hasil scan bill: ' + textResult);
-    // Kalau mau simpan di group misal:
-    // const updatedGroup = { ...group, lastBillScan: textResult };
-    // updateGroupInStorage(updatedGroup);
-  };
-
-  // Handle simpan nama member yang diedit
-  const handleSaveMemberName = () => {
-    if (!editedName.trim()) return; // kalau kosong, jangan simpan
-
-    const updatedMembers = [...group.members];
-    updatedMembers[editIndex] = editedName.trim();
-    const updatedGroup = { ...group, members: updatedMembers };
-    updateGroupInStorage(updatedGroup);
-    setEditIndex(null);
-    setEditedName('');
-  };
+  if (error) {
+    return (
+      <section className="px-4 py-6 min-h-screen flex items-center justify-center">
+        <div className="text-red-500 text-xl">{error}</div>
+      </section>
+    );
+  }
 
   if (!group) {
-    return <p className="p-6 text-center">Group not found.</p>;
+    return (
+      <section className="px-4 py-6 min-h-screen flex items-center justify-center">
+        <div className="text-red-500 text-xl">Group not found.</div>
+      </section>
+    );
   }
 
   return (
-    <section className="px-4 pt-6 pb-24 bg-gray-100 min-h-screen relative">
-      {/* Input tersembunyi untuk galeri */}
-      <input
-        ref={galleryInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleGalleryChange}
-        className="hidden"
-      />
-
-      {/* Header */}
+    <section className="px-4 py-6 min-h-screen flex flex-col">
       <div className="flex items-center justify-between mb-6 relative">
         <button onClick={() => window.history.back()} className="text-gray-700 absolute left-0">
           <MdArrowBack size={24} />
         </button>
-        <h1 className="text-xl font-semibold text-center w-full">{group.name}</h1>
+        <h1 className="text-xl font-semibold text-center w-full">{group.group_name}</h1>
       </div>
 
-      {/* Info Grup */}
       <div className="bg-white p-6 rounded-xl shadow-md mb-4 text-center relative">
         <div className="flex flex-col items-center relative">
           {group.photo ? (
@@ -133,7 +110,7 @@ export const Groupdetail = () => {
             />
           ) : (
             <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center text-4xl font-bold mb-2">
-              {group.name?.charAt(0).toUpperCase()}
+              {group.group_name?.charAt(0).toUpperCase()}
             </div>
           )}
 
@@ -146,7 +123,6 @@ export const Groupdetail = () => {
             <MdEdit size={20} />
           </button>
 
-          {/* Input tersembunyi untuk kamera / upload foto */}
           <input
             ref={fileInputRef}
             type="file"
@@ -156,123 +132,58 @@ export const Groupdetail = () => {
             disabled={loading}
           />
 
-          <p className="text-sm text-gray-500 mt-2">{group.members.length} members</p>
+          <p className="text-sm text-gray-500 mt-2">{/*group.members.length*/ 0} members</p>
 
           <button
             onClick={() => setShowMembers(!showMembers)}
             className="mt-4 px-4 py-2 rounded hover:underline transition"
+            disabled={loading}
           >
             {showMembers ? 'Hide Members' : 'Show Members'}
           </button>
+
+          {showMembers && (
+            <div className="mt-4 text-left w-full">
+              <p className="font-semibold mb-2">Members:</p>
+              <ul>
+                {/* {group.members.map((member, index) => (
+                  <li key={index} className="text-sm text-gray-700">{member}</li>
+                ))} */}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Daftar Member */}
-      {showMembers && (
-        <div className="bg-white p-4 rounded-lg shadow space-y-2 mb-20">
-          {group.members?.map((member, idx) => (
-            <div
-              key={idx}
-              className="flex text-left items-center gap-4 p-3 border-b last:border-b-0"
-            >
-              <div className="flex-1">
-                {editIndex === idx ? (
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="w-full border rounded px-2 py-1"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveMemberName();
-                      else if (e.key === 'Escape') {
-                        setEditIndex(null);
-                        setEditedName('');
-                      }
-                    }}
-                  />
-                ) : (
-                  <p className="font-medium text-gray-800">{member}</p>
-                )}
-              </div>
+      <div className="flex justify-around mb-4">
+        <button
+          onClick={() => navigate('/quickscan')}
+          className="green-button py-2 px-4 rounded flex items-center space-x-2"
+          disabled={loading}
+        >
+          <MdQrCodeScanner size={20} />
+          <span>Quick Scan</span>
+        </button>
+        <button
+          onClick={() => setShowGalleryScan(true)}
+          className="green-button py-2 px-4 rounded flex items-center space-x-2"
+          disabled={loading}
+        >
+          <MdPhotoLibrary size={20} />
+          <span>Gallery Scan</span>
+        </button>
+      </div>
 
-              <div className="flex gap-2">
-                {editIndex === idx ? (
-                  <>
-                    <button
-                      onClick={handleSaveMemberName}
-                      title="Save"
-                      className="text-green-600 hover:text-green-800"
-                    >
-                      <MdCheck size={20} />
-                    </button>
+      <div className="bg-gray-100 p-6 rounded-lg shadow-sm space-y-4 overflow-y-auto w-full flex-1">
+        <p className="text-center text-gray-600">No bills yet.</p>
+      </div>
 
-                    <button
-                      onClick={() => {
-                        setEditIndex(null);
-                        setEditedName('');
-                      }}
-                      title="Cancel"
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <MdClose size={20} />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setEditIndex(idx);
-                      setEditedName(member);
-                    }}
-                    title="Edit Member Name"
-                    className="text-gray-600 hover:text-gray-800"
-                  >
-                    <MdEdit size={20} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Komponen GalleryScan muncul saat showGalleryScan true */}
-      {showGalleryScan && selectedGalleryFile && (
+      {showGalleryScan && (
         <GalleryScan
-          file={selectedGalleryFile}
-          onComplete={handleGalleryScanComplete}
-          onCancel={() => {
-            setShowGalleryScan(false);
-            setSelectedGalleryFile(null);
-          }}
+          onClose={() => setShowGalleryScan(false)}
+          onFileSelect={setSelectedGalleryFile}
         />
       )}
-
-      {/* Tombol Scan & Galeri */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4">
-        <div className="flex justify-between gap-4">
-
-          {/* scan */}
-          <button
-            onClick={() => navigate('/quickscan')}
-            className="flex-1 green-button font-semibold px-4 py-3 rounded-lg shadow-md flex items-center justify-center gap-2"
-            disabled={loading}
-          >
-            <MdQrCodeScanner size={20} />
-            Quick Scan
-          </button>
-
-          {/* gallery */}
-          <button
-            onClick={() => navigate('/galleryscan')}
-            className="flex-1 black-button font-semibold px-4 py-3 rounded-lg shadow-md flex items-center justify-center gap-2"
-            disabled={loading}
-          >
-            <MdPhotoLibrary size={20} />
-            Select Photo
-          </button>
-        </div>
-      </div>
     </section>
   );
 };
