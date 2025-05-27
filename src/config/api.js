@@ -1,13 +1,32 @@
 import axios from 'axios';
 
+const API_URL = 'http://localhost:5000';
+
+export const API_ENDPOINTS = {
+  OCR: `${API_URL}/api/ocr`,
+  AUTH: {
+    LOGIN: `${API_URL}/auth/login`,
+    REGISTER: `${API_URL}/auth/register`,
+    PROFILE: `${API_URL}/auth/profile`,
+    GOOGLE: `${API_URL}/auth/google`,
+    GOOGLE_CALLBACK: `${API_URL}/auth/google/callback`
+  },
+  GROUPS: {
+    LIST: `${API_URL}/auth/groups`,
+    CREATE: `${API_URL}/auth/groups`,
+    GET: (groupId) => `${API_URL}/auth/groups/${groupId}`,
+    JOIN: (groupId) => `${API_URL}/auth/groups/${groupId}/join`
+  }
+};
+
 const api = axios.create({
-    baseURL: 'http://localhost:5000',
+    baseURL: API_URL,
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     },
-    timeout: 10000
+    timeout: 30000 // Increased timeout to 30 seconds
 });
 
 // Request interceptor
@@ -19,6 +38,11 @@ api.interceptors.request.use(
         // If token exists, add it to the headers
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        // Set longer timeout for LLM endpoints
+        if (config.url.includes('/api/llm')) {
+            config.timeout = 60000; // 60 seconds for LLM endpoints
         }
 
         console.log('Making request:', {

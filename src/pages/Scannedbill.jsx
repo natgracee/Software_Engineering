@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MdArrowBack, MdClear } from 'react-icons/md';
+import { llmService } from '../services/llmService';
 
 // Fungsi format harga ke ribuan IDR
 function formatPrice(num) {
@@ -16,8 +17,29 @@ export const Scannedbill = () => {
   const [billData, setBillData] = useState(null); // array of {name, quantity, price}
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const processingRef = useRef(false); // Add ref to track processing state
 
   const image = location.state?.image;
+
+  // Process OCR text with LLM
+  const processWithLLM = async (text) => {
+    try {
+      setStatus('Memproses dengan AI...');
+      const result = await llmService.processBillText(text);
+      if (result.success) {
+        setBillData(result.items);
+        setStatus('Selesai!');
+      } else {
+        throw new Error(result.error || 'Failed to process with AI');
+      }
+    } catch (error) {
+      console.error('LLM processing error:', error);
+      setStatus('Gagal memproses dengan AI, menggunakan parser default...');
+      // Fallback to default parser
+      const parsed = parseOcrTextToBillData(text);
+      setBillData(parsed);
+    }
+  };
 
   // Parsing OCR text ke array objek {name, quantity, price}
   const parseOcrTextToBillData = (text) => {
@@ -46,8 +68,16 @@ export const Scannedbill = () => {
       return;
     }
 
+    // Check if already processing
+    if (processingRef.current) {
+      return;
+    }
+
     setStatus('Memproses OCR...');
     setLoading(true);
+    processingRef.current = true;
+
+    // Configure Tesseract for better performance
     Tesseract.recognize(image, 'eng', {
       logger: m => {
         if (m.status === 'recognizing text') {
@@ -57,17 +87,22 @@ export const Scannedbill = () => {
     })
       .then(({ data: { text } }) => {
         setLoading(false);
-        setStatus('Selesai!');
         setOcrText(text);
-
-        const parsed = parseOcrTextToBillData(text);
-        setBillData(parsed);
+        console.log('OCR Text:', text);
+        // Process with LLM
+        return processWithLLM(text);
       })
       .catch(err => {
         setLoading(false);
         console.error(err);
         setStatus('Gagal memproses OCR');
+        processingRef.current = false;
       });
+
+    // Cleanup function
+    return () => {
+      processingRef.current = false;
+    };
   }, [image, navigate]);
 
   function handleBack() {
@@ -191,8 +226,8 @@ export const Scannedbill = () => {
                 <tr key={idx} className="border-b border-gray-200">
                   <td className="px-3 py-1">{item.quantity}</td>
                   <td className="px-3 py-1">{item.name}</td>
+                  <td className="px-3 py-1 text-right">{formatPrice(item.price / item.quantity)}</td>
                   <td className="px-3 py-1 text-right">{formatPrice(item.price)}</td>
-                  <td className="px-3 py-1 text-right">{formatPrice(item.price * item.quantity)}</td>
                 </tr>
               ))}
             </tbody>
@@ -200,7 +235,7 @@ export const Scannedbill = () => {
               <tr className="border-t font-semibold">
                 <td colSpan={3} className="text-right px-3 py-2">Total</td>
                 <td className="text-right px-3 py-2">
-                  {formatPrice(billData.reduce((acc, cur) => acc + cur.price * cur.quantity, 0))}
+                  {formatPrice(billData.reduce((acc, cur) => acc + cur.price, 0))}
                 </td>
               </tr>
             </tfoot>
