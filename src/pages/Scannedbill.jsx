@@ -12,6 +12,7 @@ function formatPrice(num) {
 export const Scannedbill = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const groupId = location.state?.groupId; 
   const [ocrText, setOcrText] = useState('');
   const [status, setStatus] = useState('Memuat gambar...');
   const [billData, setBillData] = useState(null); // array of {name, quantity, price}
@@ -20,7 +21,7 @@ export const Scannedbill = () => {
   const processingRef = useRef(false); // Add ref to track processing state
 
   const image = location.state?.image;
-
+  
   // Process OCR text with LLM
   const processWithLLM = async (text) => {
     try {
@@ -29,6 +30,7 @@ export const Scannedbill = () => {
       if (result.success) {
         setBillData(result.items);
         setStatus('Selesai!');
+        // console.log('group id : %s', groupId)
       } else {
         throw new Error(result.error || 'Failed to process with AI');
       }
@@ -140,7 +142,14 @@ export const Scannedbill = () => {
       alert('Data bill belum tersedia atau kosong');
       return;
     }
-    navigate('/splitbill', { state: { billData } });
+    // Pass groupId in the URL when navigating to Splitbill
+    if (groupId) {
+      navigate(`/splitbill/${groupId}`, { state: { billData } });
+    } else {
+      alert('Group ID not available. Cannot proceed to split bill.');
+      // Optionally navigate back or handle this error differently
+      // navigate(-1);
+    }
   }
 
   function handleClear() {

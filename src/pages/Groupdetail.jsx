@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { GalleryScan } from './Galleryscan';
 import {
@@ -15,6 +15,7 @@ import { authService } from '../services/authService';
 export const Groupdetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const fileInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -29,6 +30,8 @@ export const Groupdetail = () => {
 
   const [showGalleryScan, setShowGalleryScan] = useState(false);
   const [selectedGalleryFile, setSelectedGalleryFile] = useState(null);
+
+  const groupId = location.state?.groupId;
 
   useEffect(() => {
     const fetchGroup = async () => {
@@ -187,7 +190,7 @@ export const Groupdetail = () => {
 
       <div className="flex justify-around mb-4">
         <button
-          onClick={() => navigate('/quickscan')}
+          onClick={() => navigate('/quickscan', { state: { groupId: id } })}
           className="green-button py-2 px-4 rounded flex items-center space-x-2"
           disabled={loading}
         >
@@ -195,7 +198,9 @@ export const Groupdetail = () => {
           <span>Quick Scan</span>
         </button>
         <button
-          onClick={() => setShowGalleryScan(true)}
+          onClick={() => {
+            setShowGalleryScan(true);
+          }}
           className="green-button py-2 px-4 rounded flex items-center space-x-2"
           disabled={loading}
         >
@@ -212,6 +217,7 @@ export const Groupdetail = () => {
         <GalleryScan
           onClose={() => setShowGalleryScan(false)}
           onFileSelect={setSelectedGalleryFile}
+          groupId={id}
         />
       )}
     </section>

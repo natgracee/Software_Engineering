@@ -37,7 +37,7 @@ function App() {
             <Route path="/quickscan" element={<Quickscan />} />
             <Route path="/galleryscan" element={<GalleryScan />} />
             <Route path="/scannedbill" element={<Scannedbill />} />
-            <Route path="splitbill" element={<Splitbill />} />
+            <Route path="/splitbill/:groupId" element={<Splitbill />} />
             <Route path="/splitdetail" element={<SplitDetail />} />
             <Route path="*" element={<Notfound />} /> 
           </Routes>

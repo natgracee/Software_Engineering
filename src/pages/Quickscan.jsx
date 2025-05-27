@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import Camera from 'react-html5-camera-photo';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import 'react-html5-camera-photo/build/css/index.css';
 
 export const Quickscan = () => {
   const [dataUri, setDataUri] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const groupId = location.state?.groupId;
 
   const handleTakePhoto = (dataUri) => {
     setDataUri(dataUri);
   };
 
   const handleConfirmPhoto = () => {
-    // Setelah foto diambil dan user klik "Take Photo", navigasi ke scannedbill dengan data photo
     if (dataUri) {
-      navigate('/scannedbill', { state: { image: dataUri } });
+      navigate('/scannedbill', { state: { image: dataUri, groupId: groupId } });
     }
   };
 
