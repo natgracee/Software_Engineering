@@ -5,7 +5,7 @@ import { authService } from '../services/authService';
 
 export const Newgroup = () => {
   const [groupName, setGroupName] = useState('');
-  const [profilePic, setProfilePic] = useState(null);
+  const [setProfilePic] = useState(null);
   const [inviteLink, setInviteLink] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
   const navigate = useNavigate();
