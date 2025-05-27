@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export const GalleryScan = () => {
+export const GalleryScan = ({ groupId }) => {
   const navigate = useNavigate();
 
   const handleImageChange = (e) => {
@@ -9,7 +9,7 @@ export const GalleryScan = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        navigate('/scannedbill', { state: { image: reader.result } });
+        navigate('/scannedbill', { state: { image: reader.result, groupId: groupId } });
       };
       reader.readAsDataURL(file);
     }
