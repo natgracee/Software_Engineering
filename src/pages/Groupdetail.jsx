@@ -9,6 +9,7 @@ import {
   MdContentCopy
 } from 'react-icons/md';
 import { authService } from '../services/authService';
+import api from '../config/api';
 
 export const Groupdetail = () => {
   const { id } = useParams();
@@ -33,6 +34,8 @@ export const Groupdetail = () => {
   const [newMemberPhoto, setNewMemberPhoto] = useState('');
   const [showAddMemberForm, setShowAddMemberForm] = useState(false);
 
+  const [bills, setBills] = useState([]);
+  const [loadingBills, setLoadingBills] = useState(true);
 
   useEffect(() => {
     const fetchGroup = async () => {
@@ -50,7 +53,20 @@ export const Groupdetail = () => {
       }
     };
 
+    const fetchBills = async () => {
+      try {
+        setLoadingBills(true);
+        const response = await api.get(`/api/bills/group/${id}`);
+        setBills(response.data);
+      } catch (err) {
+        console.error('Error fetching bills:', err);
+      } finally {
+        setLoadingBills(false);
+      }
+    };
+
     fetchGroup();
+    fetchBills();
   }, [id]);
 
   const handlePhotoChange = (e) => {
@@ -98,6 +114,25 @@ export const Groupdetail = () => {
   const copyInviteLink = () => {
     navigator.clipboard.writeText(inviteLink);
     alert('Invite link copied to clipboard!');
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR'
+    }).format(amount);
   };
 
   if (loading) {
@@ -281,7 +316,39 @@ export const Groupdetail = () => {
       </div>
 
       <div className="bg-gray-100 p-6 rounded-lg shadow-sm space-y-4 overflow-y-auto w-full flex-1">
-        <p className="text-center text-gray-600">No bills yet.</p>
+        {loadingBills ? (
+          <p className="text-center text-gray-600">Loading bills...</p>
+        ) : bills.length === 0 ? (
+          <p className="text-center text-gray-600">No bills yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {bills.map((bill) => (
+              <div key={bill.bill_id} className="bg-white p-4 rounded-lg shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-sm text-gray-500">{formatDate(bill.date_created)}</p>
+                    <p className="font-semibold">{bill.item_count} items</p>
+                  </div>
+                  <p className="font-bold text-green-600">{formatCurrency(bill.total_amount)}</p>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <p>Paid by: {bill.paid_by_name}</p>
+                </div>
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-sm font-semibold mb-1">Items:</p>
+                  <ul className="text-sm text-gray-600">
+                    {bill.items.map((item) => (
+                      <li key={item.item_id} className="flex justify-between">
+                        <span>{item.item_name}</span>
+                        <span>{formatCurrency(item.item_price)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {showGalleryScan && (

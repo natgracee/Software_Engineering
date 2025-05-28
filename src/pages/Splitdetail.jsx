@@ -1,23 +1,76 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { MdArrowBack } from 'react-icons/md';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';  // pastikan import CSS Swal
+import api from '../config/api';  // Add this import
 
 export const SplitDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { billItems = [], assignments = {}, membersData = [], tax, discount, additionalFee } = location.state || {};
+  const { billData, membersData = [] } = location.state || {};
+
+  // Debug logs
+  useEffect(() => {
+    console.log('SplitDetail Received Data:', {
+      billData,
+      membersData
+    });
+  }, [location.state]);
 
   // Format rupiah
   const formatRupiah = (number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(number);
   };
 
-  // Hitung subtotal
-  const subtotal = billItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Calculate subtotal
+  const subtotal = billData?.items?.reduce((sum, item) => sum + (item.nominal), 0) || 0;
 
   const handleConfirmSplit = async () => {
+    // Debug log to see what data we're sending
+    console.log('Bill Data Structure:', {
+      group_id: billData.group_id,
+      items: billData.items,
+      paid_by: billData.items[0]?.paid_by,
+      tax: billData.tax,
+      service: billData.service,
+      discount: billData.discount
+    });
+
+    // Validate required fields
+    if (!billData.group_id) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Group ID',
+        text: 'Group ID is required to save the bill',
+        timer: 3000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    if (!billData.items || billData.items.length === 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No Items',
+        text: 'At least one item is required to save the bill',
+        timer: 3000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    if (!billData.items[0]?.paid_by) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Payer',
+        text: 'Payer information is required to save the bill',
+        timer: 3000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
     Swal.fire({
       title: 'Processing...',
       didOpen: () => {
@@ -29,18 +82,63 @@ export const SplitDetail = () => {
       showConfirmButton: false,
     });
 
-    // Simulasi delay 2 detik, bisa diganti API call async
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const response = await api.post('/api/bills', {
+        group_id: billData.group_id,
+        paid_by: billData.items[0]?.paid_by,
+        items: billData.items.map(item => ({
+          name: item.name,
+          nominal: item.nominal,
+          who_to_paid: item.who_to_paid
+        })),
+        date_created: new Date().toISOString()
+      });
 
-    Swal.close();
+      console.log('Server response:', response.data);
 
-    Swal.fire({
-      icon: 'success',
-      title: 'Split confirmed!',
-      timer: 1500,
-      showConfirmButton: false,
-    });
+      Swal.close();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Split confirmed and saved!',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      navigate(`/group/${billData.group_id}`);
+
+    } catch (error) {
+      console.error('Error saving bill:', error);
+      Swal.close();
+      
+      // More detailed error message
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to save bill';
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed to save bill',
+        text: errorMessage,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
   };
+
+  if (!billData) {
+    return <div>No bill data available</div>;
+  }
+
+  // Get the payer's name
+  const payer = membersData.find(m => m.id === billData.items[0]?.paid_by);
+
+  // Calculate tax amount
+  const taxAmount = billData.tax ? subtotal * billData.tax : 0;
+  // Calculate service amount
+  const serviceAmount = billData.service || 0;
+  // Calculate discount amount
+  const discountAmount = billData.discount || 0;
+  // Calculate total
+  const total = subtotal + taxAmount + serviceAmount - discountAmount;
 
   return (
     <div className="px-4 py-6 pb-24">
@@ -56,80 +154,74 @@ export const SplitDetail = () => {
         <h1 className="text-xl font-semibold text-center w-full">Your Bills</h1>
       </div>
 
+      {/* Paid By Information */}
+      {payer && (
+        <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
+          <div className="text-sm text-gray-600">Paid by:</div>
+          <div className="text-lg font-semibold text-green-700">{payer.name}</div>
+        </div>
+      )}
+
       {/* Daftar item */}
       <div className="bg-gray-100 p-4 rounded shadow min-h-[150px] font-mono text-sm whitespace-pre-wrap">
-        {billItems.length === 0 ? (
+        {billData.items.length === 0 ? (
           <p className="text-gray-500 italic">Tidak ada item.</p>
         ) : (
-          billItems.map((item, index) => {
-            const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
-            const assignedMembers = assignments[itemId] || [];
-
-            return (
-              <div key={itemId} className="mb-4 border-b border-gray-300 pb-2">
-                <div className="font-semibold">
-                  {item.quantity}x {item.name} - Rp {item.price}
-                </div>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {assignedMembers.length === 0 ? (
-                    <span className="text-xs italic text-gray-400">Belum diassign</span>
-                  ) : (
-                    assignedMembers.map(memberId => {
-                      const member = membersData.find(m => m.id === memberId);
-                      return (
-                        <span
-                          key={memberId}
-                          className="text-xs bg-green-300 px-2 py-0.5 rounded-full"
-                        >
-                          {member?.name}
-                        </span>
-                      );
-                    })
-                  )}
-                </div>
+          billData.items.map((item, index) => (
+            <div key={index} className="mb-4 border-b border-gray-300 pb-2">
+              <div className="font-semibold">
+                {item.quantity}x {item.name} - {formatRupiah(item.nominal)}
               </div>
-            );
-          })
+              <div className="flex flex-wrap gap-2 mt-1">
+                {item.who_to_paid.length === 0 ? (
+                  <span className="text-xs italic text-gray-400">Belum diassign</span>
+                ) : (
+                  item.who_to_paid.map(memberId => {
+                    const member = membersData.find(m => m.id === memberId);
+                    return member ? (
+                      <span
+                        key={memberId}
+                        className="text-xs bg-green-300 px-2 py-0.5 rounded-full"
+                      >
+                        {member.name}
+                      </span>
+                    ) : null;
+                  })
+                )}
+              </div>
+            </div>
+          ))
         )}
 
         {/* TAX, DISCOUNT, ADDITIONAL FEES */}
-        {(tax !== undefined || discount !== undefined || additionalFee !== undefined) && (
-          <div className="mt-6 border-t border-gray-400 pt-4 space-y-2 text-sm text-gray-800">
-            <div className="flex justify-between font-semibold">
-              <span>Subtotal</span>
-              <span>{formatRupiah(subtotal)}</span>
-            </div>
-            {tax !== undefined && (
-              <div className="flex justify-between">
-                <span>Tax ({(tax * 100).toFixed(2)}%)</span>
-                <span>{formatRupiah(subtotal * tax)}</span>
-              </div>
-            )}
-            {discount !== undefined && (
-              <div className="flex justify-between">
-                <span>Discount</span>
-                <span>- {formatRupiah(discount)}</span>
-              </div>
-            )}
-            {additionalFee !== undefined && (
-              <div className="flex justify-between">
-                <span>Additional Fee</span>
-                <span>{formatRupiah(additionalFee)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-semibold border-t border-gray-400 pt-2">
-              <span>Total</span>
-              <span>
-                {formatRupiah(
-                  subtotal +
-                  (tax ? subtotal * tax : 0) +
-                  (additionalFee || 0) -
-                  (discount || 0)
-                )}
-              </span>
-            </div>
+        <div className="mt-6 border-t border-gray-400 pt-4 space-y-2 text-sm text-gray-800">
+          <div className="flex justify-between font-semibold">
+            <span>Subtotal</span>
+            <span>{formatRupiah(subtotal)}</span>
           </div>
-        )}
+          {billData.tax > 0 && (
+            <div className="flex justify-between">
+              <span>Tax ({(billData.tax * 100).toFixed(2)}%)</span>
+              <span>{formatRupiah(taxAmount)}</span>
+            </div>
+          )}
+          {billData.discount > 0 && (
+            <div className="flex justify-between">
+              <span>Discount</span>
+              <span>- {formatRupiah(discountAmount)}</span>
+            </div>
+          )}
+          {billData.service > 0 && (
+            <div className="flex justify-between">
+              <span>Service Fee</span>
+              <span>{formatRupiah(serviceAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-semibold border-t border-gray-400 pt-2">
+            <span>Total</span>
+            <span>{formatRupiah(total)}</span>
+          </div>
+        </div>
       </div>
 
       {/* Tombol submit atau konfirmasi di bawah */}

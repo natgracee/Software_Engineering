@@ -19,6 +19,7 @@ export const Splitbill = () => {
   const [loading, setLoading] = useState(initialMembers.length === 0);
   const [error, setError] = useState(null);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [paidBy, setpaidBy] = useState(null);
 
   const [assignments, setAssignments] = useState(() => {
     const init = {};
@@ -98,23 +99,46 @@ export const Splitbill = () => {
     });
 
     setAssignments(newAssignments);
+    setpaidBy(selectedMember);
 
     alert(`Bill telah dibagi 100% ke anggota: ${membersData.find(m => m.id === selectedMember)?.name}`);
   };
 
   const handleNext = () => {
-    const itemsWithIds = billItems.map((item, index) => ({
-      ...item,
-      id: item.id !== undefined ? item.id : `temp-${index}`
-    }));
+    if (!paidBy) {
+      alert('Pilih siapa yang membayar bill ini!');
+      return;
+    }
+
+    // Format data according to dummy bills format
+    const formattedBill = {
+      group_id: groupId,
+      items: billItems.map(item => {
+        const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
+        const assignedMembers = assignments[itemId] || [];
+        
+        return {
+          name: item.name,
+          quantity: item.quantity,
+          nominal: item.price,
+          who_to_paid: assignedMembers,
+          paid_by: paidBy
+        };
+      }),
+      tax: tax || 0,
+      service: additionalFee || 0,
+      discount: discount || 0
+    };
+
+    console.log('Passing to SplitDetail:', formattedBill);
+
     navigate('/splitdetail', {
       state: {
-        billItems: itemsWithIds,
-        assignments,
-        membersData,
-        tax,
-        discount,
-        additionalFee
+        billData: formattedBill,
+        membersData: membersData.map(member => ({
+          id: member.id,
+          name: member.name
+        }))
       }
     });
   };
@@ -181,6 +205,23 @@ export const Splitbill = () => {
           </div>
         )}
 
+        {/* Global Paid By Selection */}
+        <div className="mb-4 p-4 bg-white rounded shadow">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Who paid for this bill?</label>
+          <select
+            className="w-full p-2 border rounded"
+            value={paidBy || ''}
+            onChange={(e) => setpaidBy(e.target.value)}
+          >
+            <option value="">Select who paid</option>
+            {membersData.map(member => (
+              <option key={member.id} value={member.id}>
+                {member.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="bg-gray-100 p-4 rounded shadow min-h-[150px] font-mono text-sm whitespace-pre-wrap">
           {billItems.map((item) => {
             const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
@@ -197,7 +238,7 @@ export const Splitbill = () => {
                 }}
               >
                 <div className="font-semibold">
-                  {item.quantity}x {item.name} Rp {item.price}
+                  {item.quantity}x {item.name} - {formatRupiah(item.price)}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {assignedMembers.length === 0 && (

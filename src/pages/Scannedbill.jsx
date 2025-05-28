@@ -240,8 +240,8 @@ export const Scannedbill = () => {
                 <tr key={idx} className="border-b border-gray-200">
                   <td className="px-3 py-1">{item.quantity}</td>
                   <td className="px-3 py-1">{item.name}</td>
+                  <td className="px-3 py-1 text-right">{formatPrice(item.price / item.quantity)}</td>
                   <td className="px-3 py-1 text-right">{formatPrice(item.price)}</td>
-                  <td className="px-3 py-1 text-right">{formatPrice(item.price * item.quantity)}</td>
                 </tr>
               ))}
             </tbody>
