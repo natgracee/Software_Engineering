@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { MdOutlineAccountCircle, MdOutlineNotifications, MdPayments } from "react-icons/md";
+import { MdOutlineAccountCircle, MdOutlineNotifications, MdPayments, MdGroups, MdArrowForward, MdAdd, MdGroup } from "react-icons/md";
 import { GroupItem } from "./Groupitem";
 import { useUser } from "../context/UserContext";
 import { useEffect, useState } from "react";
 import { authService } from "../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export const Main = () => {
   const { user } = useUser();
@@ -11,6 +12,7 @@ export const Main = () => {
   const [groups, setGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [errorLoadingGroups, setErrorLoadingGroups] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserGroups = async () => {
@@ -70,39 +72,88 @@ export const Main = () => {
       </div>
 
       {/* Group List */}
-      <div className="bg-green-100 rounded-xl shadow-xl overflow-hidden p-6 mt-6 h-screen">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-muted-foreground text-base font-semibold">Groups List</p>
-          <Link to="/grouplist" className="text-sm text-primary hover:underline">
-            See More
+      <div className="bg-white rounded-xl shadow-xl overflow-hidden mt-6 border border-gray-200">
+        <div className="bg-green-600 p-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">Groups</h2>
+          <Link 
+            to="/newgroup" 
+            className="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors"
+            title="Create New Group"
+          >
+            <MdAdd size={24} />
           </Link>
         </div>
 
-        <div className="p-4 rounded-lg shadow-sm space-y-2 max-h-80 sm:max-h-[400px] lg:max-h-[500px] xl:max-h-[600px] overflow-y-auto">
+        <div className="divide-y divide-gray-200">
           {loadingGroups ? (
-            <p className="text-center text-gray-600">Loading groups...</p>
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+            </div>
           ) : errorLoadingGroups ? (
-            <p className="text-center text-red-600">{errorLoadingGroups}</p>
+            <div className="text-center py-8">
+              <MdError className="mx-auto text-red-500 mb-2" size={32} />
+              <p className="text-red-600">{errorLoadingGroups}</p>
+            </div>
           ) : groups.length === 0 ? (
-            <p className="text-center text-gray-600">No groups yet. Create one!</p>
+            <div className="text-center py-8">
+              <MdGroups className="mx-auto text-gray-400 mb-2" size={48} />
+              <p className="text-gray-600 mb-4">No groups yet</p>
+              <Link 
+                to="/creategroup" 
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <MdAdd size={20} />
+                <span>Create Your First Group</span>
+              </Link>
+            </div>
           ) : (
             groups.map((group) => (
-              <GroupItem 
+              <div 
                 key={group.group_id} 
-                id={group.group_id}
-                groupName={group.group_name} 
-                inviteLink={null} // Assuming inviteLink is not returned by the backend endpoint yet
-              />
+                className="flex items-center p-4 hover:bg-gray-50 transition-colors cursor-pointer group"
+                onClick={() => navigate(`/group/${group.group_id}`)}
+              >
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mr-4 group-hover:bg-green-200 transition-colors overflow-hidden">
+                  {group.profile_picture ? (
+                    <img
+                      src={`http://localhost:5000/uploads/group-photos/${group.profile_picture}`}
+                      alt={group.group_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-green-700 text-lg font-semibold">
+                      {group.group_name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold text-gray-900 truncate">{group.group_name}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 hidden group-hover:inline">View Details</span>
+                      <MdArrowForward className="text-gray-400 group-hover:text-green-600 transition-colors" size={20} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-gray-600">Tap to manage bills and members</span>
+                  </div>
+                </div>
+              </div>
             ))
           )}
         </div>
 
-        {/* Create Group Button
-        <Link to="/newgroup" className="block mt-6">
-          <button className="green-button py-2 px-6 rounded-lg mt-12">
-            Create New Group
-          </button>
-        </Link> */}
+        {groups.length > 0 && (
+          <div className="p-4 border-t border-gray-200 bg-gray-50">
+            <Link 
+              to="/grouplist" 
+              className="flex items-center justify-center gap-2 text-green-600 hover:text-green-700 transition-colors font-medium"
+            >
+              <span>View all groups</span>
+              <MdArrowForward size={20} />
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

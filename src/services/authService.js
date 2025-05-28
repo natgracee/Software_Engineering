@@ -74,7 +74,17 @@ export const authService = {
     // function to create a group
     async createGroup(groupData) {
         try {
-            const response = await api.post('/auth/groups', groupData);
+            const formData = new FormData();
+            formData.append('groupName', groupData.groupName);
+            if (groupData.profilePicture) {
+                formData.append('profilePicture', groupData.profilePicture);
+            }
+
+            const response = await api.post('/auth/groups', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
