@@ -30,10 +30,12 @@ export const Splitbill = () => {
     return init;
   });
 
+  // NEW: state untuk total tagihan per member
+  const [billsPerMember, setBillsPerMember] = useState({});
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Jika sudah ada members dari location.state, skip fetch
     if (initialMembers.length > 0) {
       setLoading(false);
       return;
@@ -87,21 +89,77 @@ export const Splitbill = () => {
   };
 
   const splitEqually = () => {
-    if (!selectedMember) {
-      alert('Pilih satu anggota dulu untuk split!');
+    if (membersData.length === 0) {
+      alert('Tidak ada anggota untuk membagi bill.');
       return;
     }
 
     const newAssignments = {};
     billItems.forEach(item => {
       const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
-      newAssignments[itemId] = [selectedMember];
+      newAssignments[itemId] = membersData.map(member => member.id);
     });
 
     setAssignments(newAssignments);
-    setpaidBy(selectedMember);
+    alert("Bill telah dibagi rata ke semua anggota.");
+  };
 
-    alert(`Bill telah dibagi 100% ke anggota: ${membersData.find(m => m.id === selectedMember)?.name}`);
+  // NEW: fungsi hitung tagihan per member
+  const calculateBillsPerMember = () => {
+    const totals = {};
+
+    membersData.forEach(member => {
+      totals[member.id] = 0;
+    });
+
+    billItems.forEach(item => {
+      const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
+      const assignedMembers = assignments[itemId] || [];
+      if (assignedMembers.length === 0) return; // skip jika tidak ada yang assign
+
+      // harga total item = quantity * price
+      const totalItemPrice = item.quantity * item.price;
+
+      // bagi rata ke yang assigned
+      const sharePerMember = totalItemPrice / assignedMembers.length;
+
+      assignedMembers.forEach(memberId => {
+        totals[memberId] += sharePerMember;
+      });
+    });
+
+    // Tambahkan tax, discount, dan additionalFee proporsional ke tiap member
+    let subTotal = Object.values(totals).reduce((a,b) => a + b, 0);
+
+    // kalau subtotal 0, skip
+    if (subTotal === 0) return totals;
+
+    // kalkulasi tambahan biaya
+    if (tax) {
+      const taxAmount = subTotal * tax;
+      const taxPerMemberRatio = taxAmount / subTotal;
+      for (const m in totals) {
+        totals[m] += totals[m] * taxPerMemberRatio;
+      }
+    }
+
+    if (additionalFee) {
+      const feePerMember = additionalFee / membersData.length;
+      for (const m in totals) {
+        totals[m] += feePerMember;
+      }
+    }
+
+    if (discount) {
+      // Asumsikan discount dikurangi merata per member
+      const discountPerMember = discount / membersData.length;
+      for (const m in totals) {
+        totals[m] -= discountPerMember;
+        if (totals[m] < 0) totals[m] = 0; // jangan sampai negatif
+      }
+    }
+
+    return totals;
   };
 
   const handleNext = () => {
@@ -110,13 +168,12 @@ export const Splitbill = () => {
       return;
     }
 
-    // Format data according to dummy bills format
     const formattedBill = {
       group_id: groupId,
       items: billItems.map(item => {
         const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
         const assignedMembers = assignments[itemId] || [];
-        
+
         return {
           name: item.name,
           quantity: item.quantity,
@@ -130,6 +187,12 @@ export const Splitbill = () => {
       discount: discount || 0
     };
 
+    // NEW: Hitung tagihan per member dan simpan ke localStorage
+    const bills = calculateBillsPerMember();
+    setBillsPerMember(bills);
+    localStorage.setItem('billsPerMember', JSON.stringify(bills));
+
+    console.log('Tagihan per member:', bills);
     console.log('Passing to SplitDetail:', formattedBill);
 
     navigate('/splitdetail', {
@@ -138,7 +201,8 @@ export const Splitbill = () => {
         membersData: membersData.map(member => ({
           id: member.id,
           name: member.name
-        }))
+        })),
+        billsPerMember: bills // bisa diteruskan ke halaman berikutnya
       }
     });
   };
@@ -205,7 +269,6 @@ export const Splitbill = () => {
           </div>
         )}
 
-        {/* Global Paid By Selection */}
         <div className="mb-4 p-4 bg-white rounded shadow">
           <label className="block text-sm font-medium text-gray-700 mb-2">Who paid for this bill?</label>
           <select
@@ -237,63 +300,44 @@ export const Splitbill = () => {
                   if (e.key === 'Enter' || e.key === ' ') toggleAssignItemToMember(item);
                 }}
               >
-                <div className="font-semibold">
-                  {item.quantity}x {item.name} - {formatRupiah(item.price)}
-                </div>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {assignedMembers.length === 0 && (
-                    <span className="text-xs italic text-gray-400">Belum diassign</span>
-                  )}
-                  {assignedMembers.map(memberId => {
-                    const member = membersData.find(m => m.id === memberId);
-                    return member ? (
-                      <span
-                        key={memberId}
-                        className="text-xs bg-pink-300 px-2 py-0.5 rounded-full"
-                      >
-                        {member.name}
-                      </span>
-                    ) : null;
-                  })}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <div className="truncate max-w-[50%] font-semibold">{item.name}</div>
+                    <div className="text-center w-12">{item.quantity}x</div>
+                    <div className="text-right w-24 font-bold">
+                      {formatRupiah(item.price * item.quantity)}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-600 text-right">
+                    @{formatRupiah(item.price)} per item
+                  </div>
+                  <div className="flex gap-1 items-center flex-wrap max-w-[70%]">
+                    {assignedMembers.map(id => {
+                      const member = membersData.find(m => m.id === id);
+                      return member ? (
+                        <div
+                          key={id}
+                          className="rounded-full bg-pink-400 text-white w-5 h-5 flex items-center justify-center text-xs font-bold"
+                          title={member.name}
+                        >
+                          {member.name[0].toUpperCase()}
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
                 </div>
               </div>
             );
           })}
-
-          {(tax !== undefined || discount !== undefined || additionalFee !== undefined) && (
-            <div className="mt-6 border-t border-gray-400 pt-4 space-y-2 text-sm text-gray-800">
-              {tax !== undefined && (
-                <div className="flex justify-between">
-                  <span>Tax ({(tax * 100).toFixed(2)}%)</span>
-                  <span>{formatRupiah(billItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * tax)}</span>
-                </div>
-              )}
-              {discount !== undefined && (
-                <div className="flex justify-between">
-                  <span>Discount</span>
-                  <span>- {formatRupiah(discount)}</span>
-                </div>
-              )}
-              {additionalFee !== undefined && (
-                <div className="flex justify-between">
-                  <span>Additional Fee</span>
-                  <span>{formatRupiah(additionalFee)}</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
-        <button
-          className="max-w-md w-full green-button font-semibold py-3 rounded shadow transition"
-          onClick={handleNext}
-          type="button"
-        >
-          Next
-        </button>
-      </div>
+      <button
+        onClick={handleNext}
+        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-11/12 green-button font-semibold py-3 rounded shadow-lg"
+      >
+        Next
+      </button>
     </div>
   );
 };
