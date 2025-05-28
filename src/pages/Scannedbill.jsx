@@ -18,11 +18,15 @@ export const Scannedbill = () => {
   const [billData, setBillData] = useState(null); // array of {name, quantity, price}
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const processingRef = useRef(false); // Add ref to track processing state
+  const processingRef = useRef(false);
+
+  // State tambahan untuk tax, discount, additional fee
+  const [tax, setTax] = useState(0); // dalam persen, contoh 10 artinya 10%
+  const [discount, setDiscount] = useState(0); // dalam persen
+  const [additionalFee, setAdditionalFee] = useState(0); // nominal IDR
 
   const image = location.state?.image;
-  
-  // Process OCR text with LLM
+
   const processWithLLM = async (text) => {
     try {
       setStatus('Memproses dengan AI...');
@@ -30,20 +34,17 @@ export const Scannedbill = () => {
       if (result.success) {
         setBillData(result.items);
         setStatus('Selesai!');
-        // console.log('group id : %s', groupId)
       } else {
         throw new Error(result.error || 'Failed to process with AI');
       }
     } catch (error) {
       console.error('LLM processing error:', error);
       setStatus('Gagal memproses dengan AI, menggunakan parser default...');
-      // Fallback to default parser
       const parsed = parseOcrTextToBillData(text);
       setBillData(parsed);
     }
   };
 
-  // Parsing OCR text ke array objek {name, quantity, price}
   const parseOcrTextToBillData = (text) => {
     const lines = text.split('\n').filter(Boolean);
     const items = [];
@@ -70,7 +71,6 @@ export const Scannedbill = () => {
       return;
     }
 
-    // Check if already processing
     if (processingRef.current) {
       return;
     }
@@ -79,7 +79,6 @@ export const Scannedbill = () => {
     setLoading(true);
     processingRef.current = true;
 
-    // Configure Tesseract for better performance
     Tesseract.recognize(image, 'eng', {
       logger: m => {
         if (m.status === 'recognizing text') {
@@ -91,7 +90,6 @@ export const Scannedbill = () => {
         setLoading(false);
         setOcrText(text);
         console.log('OCR Text:', text);
-        // Process with LLM
         return processWithLLM(text);
       })
       .catch(err => {
@@ -101,7 +99,6 @@ export const Scannedbill = () => {
         processingRef.current = false;
       });
 
-    // Cleanup function
     return () => {
       processingRef.current = false;
     };
@@ -129,7 +126,6 @@ export const Scannedbill = () => {
   }
 
   function handleSaveEdit() {
-    // Validasi minimal 1 item valid sebelum save
     if (billData && billData.length > 0 && billData.every(item => item.name.trim() !== '' && item.quantity > 0 && item.price > 0)) {
       setIsEditing(false);
     } else {
@@ -142,13 +138,11 @@ export const Scannedbill = () => {
       alert('Data bill belum tersedia atau kosong');
       return;
     }
-    // Pass groupId in the URL when navigating to Splitbill
     if (groupId) {
-      navigate(`/splitbill/${groupId}`, { state: { billData } });
+      // Kirim juga tax, discount, additionalFee
+      navigate(`/splitbill/${groupId}`, { state: { billData, tax, discount, additionalFee } });
     } else {
       alert('Group ID not available. Cannot proceed to split bill.');
-      // Optionally navigate back or handle this error differently
-      // navigate(-1);
     }
   }
 
@@ -157,7 +151,18 @@ export const Scannedbill = () => {
     setOcrText('');
     setStatus('Silakan scan ulang gambar');
     setIsEditing(false);
+    setTax(0);
+    setDiscount(0);
+    setAdditionalFee(0);
   }
+
+  // Hitung subtotal tanpa tax dan discount
+  const subTotal = billData ? billData.reduce((acc, cur) => acc + cur.price, 0) : 0;
+
+  // Hitung nilai pajak, diskon, dan total akhir
+  const taxAmount = (subTotal * tax) / 100;
+  const discountAmount = (subTotal * discount) / 100;
+  const finalTotal = subTotal + taxAmount + additionalFee - discountAmount;
 
   return (
     <div className="p-4 font-sans min-h-screen flex flex-col relative">
@@ -235,30 +240,53 @@ export const Scannedbill = () => {
                 <tr key={idx} className="border-b border-gray-200">
                   <td className="px-3 py-1">{item.quantity}</td>
                   <td className="px-3 py-1">{item.name}</td>
-                  <td className="px-3 py-1 text-right">{formatPrice(item.price / item.quantity)}</td>
                   <td className="px-3 py-1 text-right">{formatPrice(item.price)}</td>
+                  <td className="px-3 py-1 text-right">{formatPrice(item.price * item.quantity)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t font-semibold">
-                <td colSpan={3} className="text-right px-3 py-2">Total</td>
-                <td className="text-right px-3 py-2">
-                  {formatPrice(billData.reduce((acc, cur) => acc + cur.price, 0))}
-                </td>
+                <td colSpan={3} className="text-right px-3 py-2">Subtotal</td>
+                <td className="text-right px-3 py-2">{formatPrice(subTotal)}</td>
+              </tr>
+
+              {/* Tax */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">Tax ({tax}%)</td>
+                <td className="text-right px-3 py-2">{formatPrice(taxAmount)}</td>
+              </tr>
+
+              {/* Discount */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">Discount ({discount}%)</td>
+                <td className="text-right px-3 py-2">-{formatPrice(discountAmount)}</td>
+              </tr>
+
+              {/* Additional Fee */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">Additional Fee</td>
+                <td className="text-right px-3 py-2">{formatPrice(additionalFee)}</td>
+              </tr>
+
+              {/* Final Total */}
+              <tr className="border-t font-bold text-lg bg-gray-200">
+                <td colSpan={3} className="text-right px-3 py-3">Total</td>
+                <td className="text-right px-3 py-3">{formatPrice(finalTotal)}</td>
               </tr>
             </tfoot>
           </table>
         )}
 
+        {/* Edit Mode */}
         {isEditing && billData && (
-          <table className="w-full bg-gray-100 rounded text-sm font-mono">
+          <table className="w-full bg-gray-50 rounded text-sm font-mono">
             <thead>
               <tr className="border-b border-gray-300">
-                <th className="px-3 py-2 w-16">Qty</th>
-                <th className="px-3 py-2">Item Name</th>
-                <th className="px-3 py-2 w-28">Price</th>
-                <th className="px-3 py-2 w-28">Total</th>
+                <th className="text-left px-3 py-2 w-16">Qty</th>
+                <th className="text-left px-3 py-2">Item Name</th>
+                <th className="text-right px-3 py-2 w-28">Price</th>
+                <th className="text-right px-3 py-2 w-28">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -267,10 +295,10 @@ export const Scannedbill = () => {
                   <td className="px-3 py-1">
                     <input
                       type="number"
+                      min={1}
                       value={item.quantity}
-                      min={0}
                       onChange={e => handleChangeItem(idx, 'quantity', e.target.value)}
-                      className="w-full text-right rounded border border-gray-300 p-1"
+                      className="w-full rounded border border-gray-300 p-1 text-right"
                     />
                   </td>
                   <td className="px-3 py-1">
@@ -284,10 +312,10 @@ export const Scannedbill = () => {
                   <td className="px-3 py-1">
                     <input
                       type="number"
-                      value={item.price}
                       min={0}
+                      value={item.price}
                       onChange={e => handleChangeItem(idx, 'price', e.target.value)}
-                      className="w-full text-right rounded border border-gray-300 p-1"
+                      className="w-full rounded border border-gray-300 p-1 text-right"
                     />
                   </td>
                   <td className="px-3 py-1 text-right">
@@ -296,60 +324,102 @@ export const Scannedbill = () => {
                 </tr>
               ))}
             </tbody>
+
             <tfoot>
               <tr className="border-t font-semibold">
-                <td colSpan={3} className="text-right px-3 py-2">Total</td>
-                <td className="text-right px-3 py-2">
-                  {formatPrice(billData.reduce((acc, cur) => acc + cur.price * cur.quantity, 0))}
+                <td colSpan={3} className="text-right px-3 py-2">Subtotal</td>
+                <td className="text-right px-3 py-2">{formatPrice(subTotal)}</td>
+              </tr>
+
+              {/* Tax input */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">
+                  <label htmlFor="taxInput">Tax (%)</label>
                 </td>
+                <td className="text-right px-3 py-2">
+                  <input
+                    id="taxInput"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={tax}
+                    onChange={e => setTax(Number(e.target.value))}
+                    className="w-20 rounded border border-gray-300 p-1 text-right"
+                  />
+                </td>
+              </tr>
+
+              {/* Discount input */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">
+                  <label htmlFor="discountInput">Discount (%)</label>
+                </td>
+                <td className="text-right px-3 py-2">
+                  <input
+                    id="discountInput"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={discount}
+                    onChange={e => setDiscount(Number(e.target.value))}
+                    className="w-20 rounded border border-gray-300 p-1 text-right"
+                  />
+                </td>
+              </tr>
+
+              {/* Additional Fee input */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">
+                  <label htmlFor="additionalFeeInput">Additional Fee (IDR)</label>
+                </td>
+                <td className="text-right px-3 py-2">
+                  <input
+                    id="additionalFeeInput"
+                    type="number"
+                    min={0}
+                    value={additionalFee}
+                    onChange={e => setAdditionalFee(Number(e.target.value))}
+                    className="w-28 rounded border border-gray-300 p-1 text-right"
+                  />
+                </td>
+              </tr>
+
+              {/* Final total */}
+              <tr className="border-t font-bold text-lg bg-gray-200">
+                <td colSpan={3} className="text-right px-3 py-3">Total</td>
+                <td className="text-right px-3 py-3">{formatPrice(finalTotal)}</td>
               </tr>
             </tfoot>
           </table>
         )}
-
-        {/* Kalau OCR text ada tapi parse gagal, tampilkan raw text */}
-        {!billData && !isEditing && (
-          <pre className="bg-gray-100 p-4 rounded whitespace-pre-wrap text-sm font-mono leading-relaxed">
-            {ocrText || 'Tidak ada data bill yang dikenali.'}
-          </pre>
-        )}
       </div>
 
-      {/* Buttons fixed bottom center */}
-      <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
-        <div className="flex gap-4 max-w-md w-full">
-          {!isEditing && billData && (
-            <button
-              onClick={handleEditBill}
-              className="flex-1 black-button font-semibold py-2 rounded shadow transition"
-            >
-              Edit Bill
-            </button>
-          )}
-
-          {isEditing && (
+      {/* Action Buttons */}
+      {billData && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between space-x-2">
+          {isEditing ? (
             <button
               onClick={handleSaveEdit}
-              className="flex-1 green-button font-semibold py-2 rounded shadow transition"
+              className="flex-1 black-button font-semibold py-2 rounded"
             >
-              Save
+              Simpan
+            </button>
+          ) : (
+            <button
+              onClick={handleEditBill}
+              className="flex-1 black-button font-semibold py-2 rounded"
+            >
+              Edit
             </button>
           )}
-
           <button
             onClick={handleConfirm}
-            disabled={!billData || billData.length === 0}
-            aria-disabled={!billData || billData.length === 0}
-            className={`flex-1 font-semibold py-2 rounded shadow transition ${
-              billData && billData.length > 0
-                ? 'green-button hover:brightness-90'
-                : 'bg-green-400 cursor-not-allowed'
-            }`}
+            className="flex-1 green-button font-semibold py-2 rounded"
           >
-            Split Bill
+            SplitBill
           </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };

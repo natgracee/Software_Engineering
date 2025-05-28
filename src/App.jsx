@@ -17,6 +17,7 @@ import { Scannedbill } from "./pages/Scannedbill";
 import { Splitbill } from "./pages/Splitbill";
 import { SplitDetail } from "./pages/Splitdetail";
 import { UserProvider } from "./context/UserContext";
+// import { GoogleOAuthProvider } from "@react-oauth/google";
 
 function App() {
     return (

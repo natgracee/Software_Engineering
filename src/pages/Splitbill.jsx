@@ -7,18 +7,24 @@ import { authService } from '../services/authService';
 export const Splitbill = () => {
   const { groupId } = useParams();
   const location = useLocation();
-  const [selectedMember, setSelectedMember] = useState(null);
-  const [membersData, setMembersData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  // Get billData from navigation state
+
   const billItems = location.state?.billData || [];
+  const tax = location.state?.tax;
+  const discount = location.state?.discount;
+  const additionalFee = location.state?.additionalFee;
+
+  const initialMembers = location.state?.members || [];
+
+  const [membersData, setMembersData] = useState(initialMembers);
+  const [loading, setLoading] = useState(initialMembers.length === 0);
+  const [error, setError] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null);
+
   const [assignments, setAssignments] = useState(() => {
     const init = {};
     billItems.forEach(item => {
-      // Use a unique identifier for items if available, otherwise use index
-      const itemId = item.id !== undefined ? item.id : JSON.stringify(item); // Use a unique ID or stringify for key
-      init[itemId] = []; // awalnya belum ada member assigned
+      const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
+      init[itemId] = [];
     });
     return init;
   });
@@ -26,12 +32,17 @@ export const Splitbill = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Jika sudah ada members dari location.state, skip fetch
+    if (initialMembers.length > 0) {
+      setLoading(false);
+      return;
+    }
+
     const fetchGroupMembers = async () => {
       try {
         setLoading(true);
         setError(null);
         const groupData = await authService.getGroupById(groupId);
-        // Transform the members data to match our component's expected format
         const transformedMembers = groupData.members.map(member => ({
           id: member.id,
           name: member.username
@@ -46,14 +57,12 @@ export const Splitbill = () => {
     };
 
     fetchGroupMembers();
-  }, [groupId]);
+  }, [groupId, initialMembers.length]);
 
-  // Pilih / toggle member yang aktif
   const toggleSelectedMember = (id) => {
     setSelectedMember(selectedMember === id ? null : id);
   };
 
-  // Klik makanan untuk assign/unassign ke member yang dipilih
   const toggleAssignItemToMember = (item) => {
     if (!selectedMember) {
       alert('Pilih anggota dulu sebelum memilih makanan.');
@@ -63,13 +72,11 @@ export const Splitbill = () => {
     setAssignments(prev => {
       const assignedMembers = prev[itemId] || [];
       if (assignedMembers.includes(selectedMember)) {
-        // hapus assign
         return {
           ...prev,
           [itemId]: assignedMembers.filter(mId => mId !== selectedMember),
         };
       } else {
-        // tambah assign
         return {
           ...prev,
           [itemId]: [...assignedMembers, selectedMember],
@@ -78,32 +85,46 @@ export const Splitbill = () => {
     });
   };
 
-  // Fungsi split equally (sementara alert)
   const splitEqually = () => {
     if (!selectedMember) {
       alert('Pilih satu anggota dulu untuk split!');
       return;
     }
-    alert(`Bill akan dibagi 100% ke anggota: ${
-      membersData.find(m => m.id === selectedMember).name
-    }`);
+
+    const newAssignments = {};
+    billItems.forEach(item => {
+      const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
+      newAssignments[itemId] = [selectedMember];
+    });
+
+    setAssignments(newAssignments);
+
+    alert(`Bill telah dibagi 100% ke anggota: ${membersData.find(m => m.id === selectedMember)?.name}`);
   };
 
   const handleNext = () => {
-    // bisa lempar assignments, billItems, membersData ke halaman berikutnya
-    // Ensure billItems passed to next page has a stable ID if possible
     const itemsWithIds = billItems.map((item, index) => ({
-        ...item,
-        // Add a temporary client-side ID if no backend ID exists yet
-        // In a real app, you'd save items to DB here and use the DB ID
-        id: item.id !== undefined ? item.id : `temp-${index}`
+      ...item,
+      id: item.id !== undefined ? item.id : `temp-${index}`
     }));
-    navigate('/splitdetail', { state: { billItems: itemsWithIds, assignments, membersData } });
+    navigate('/splitdetail', {
+      state: {
+        billItems: itemsWithIds,
+        assignments,
+        membersData,
+        tax,
+        discount,
+        additionalFee
+      }
+    });
+  };
+
+  const formatRupiah = (number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(number);
   };
 
   return (
     <div className="px-4 py-6 pb-24">
-      {/* Top bar */}
       <div className="flex items-center justify-between mb-6 relative">
         <button onClick={() => window.history.back()} className="text-gray-700 absolute left-0" aria-label="Back">
           <MdArrowBack size={28} />
@@ -111,26 +132,18 @@ export const Splitbill = () => {
         <h1 className="text-xl font-semibold text-center w-full">Your Bills</h1>
       </div>
 
-      {/* Title & description */}
       <div className="mb-4">
         <h2 className="text-lg text-left font-semibold text-gray-800">Select Member</h2>
         <p className="text-sm text-left text-gray-600 mb-4">
           Pilih anggota lalu klik makanan yang dibeli anggota tersebut.
         </p>
 
-        {error && (
-          <div className="text-red-500 text-sm mb-4">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
 
         {loading ? (
-          <div className="text-center py-4">
-            Loading members...
-          </div>
+          <div className="text-center py-4">Loading members...</div>
         ) : (
           <div className="flex justify-between items-center gap-6 mb-6 mt-10">
-            {/* Member list */}
             <div className="flex gap-6">
               {membersData.map(member => {
                 const selected = selectedMember === member.id;
@@ -153,7 +166,6 @@ export const Splitbill = () => {
               })}
             </div>
 
-            {/* Split Equally button */}
             <button
               onClick={splitEqually}
               className="flex flex-col items-center cursor-pointer focus:outline-none"
@@ -169,15 +181,13 @@ export const Splitbill = () => {
           </div>
         )}
 
-        {/* Daftar makanan */}
         <div className="bg-gray-100 p-4 rounded shadow min-h-[150px] font-mono text-sm whitespace-pre-wrap">
-          {billItems.map((item, index) => {
-            // Use a unique identifier for items if available, otherwise use index
-            const itemId = item.id !== undefined ? item.id : JSON.stringify(item); // Use a unique ID or stringify for key
+          {billItems.map((item) => {
+            const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
             const assignedMembers = assignments[itemId] || [];
             return (
               <div
-                key={itemId} // Use the unique ID for the key
+                key={itemId}
                 className="mb-4 border-b border-gray-300 pb-2 cursor-pointer select-none"
                 onClick={() => toggleAssignItemToMember(item)}
                 role="button"
@@ -208,10 +218,32 @@ export const Splitbill = () => {
               </div>
             );
           })}
+
+          {(tax !== undefined || discount !== undefined || additionalFee !== undefined) && (
+            <div className="mt-6 border-t border-gray-400 pt-4 space-y-2 text-sm text-gray-800">
+              {tax !== undefined && (
+                <div className="flex justify-between">
+                  <span>Tax ({(tax * 100).toFixed(2)}%)</span>
+                  <span>{formatRupiah(billItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * tax)}</span>
+                </div>
+              )}
+              {discount !== undefined && (
+                <div className="flex justify-between">
+                  <span>Discount</span>
+                  <span>- {formatRupiah(discount)}</span>
+                </div>
+              )}
+              {additionalFee !== undefined && (
+                <div className="flex justify-between">
+                  <span>Additional Fee</span>
+                  <span>{formatRupiah(additionalFee)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Tombol Next fixed bottom */}
       <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
         <button
           className="max-w-md w-full green-button font-semibold py-3 rounded shadow transition"
