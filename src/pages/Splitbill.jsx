@@ -211,6 +211,23 @@ export const Splitbill = () => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(number);
   };
 
+  {/* Global Paid By Selection */}
+  <div className="mb-4 p-4 bg-white rounded shadow">
+    <label className="block text-sm font-medium text-gray-700 mb-2">Who paid for this bill?</label>
+    <select
+      className="w-full p-2 border rounded"
+      value={paidBy || ''}
+      onChange={(e) => setpaidBy(e.target.value)}
+    >
+      <option value="">Select who paid</option>
+      {membersData.map(member => (
+        <option key={member.id} value={member.id}>
+          {member.name}
+        </option>
+      ))}
+    </select>
+  </div>
+
   return (
     <div className="px-4 py-6 pb-24">
       <div className="flex items-center justify-between mb-6 relative">

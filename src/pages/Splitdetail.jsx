@@ -107,6 +107,16 @@ export const SplitDetail = () => {
     !billData?.items[0]?.paid_by;
 
   const handleConfirmSplit = async () => {
+     // Debug log to see what data we're sending
+    console.log('Bill Data Structure:', {
+      group_id: billData.group_id,
+      items: billData.items,
+      paid_by: billData.items[0]?.paid_by,
+      tax: billData.tax,
+      service: billData.service,
+      discount: billData.discount
+    });
+
     if (!billData.group_id) {
       Swal.fire({
         icon: 'error',
@@ -117,6 +127,7 @@ export const SplitDetail = () => {
       });
       return;
     }
+
     if (!billData.items || billData.items.length === 0) {
       Swal.fire({
         icon: 'error',
@@ -127,6 +138,7 @@ export const SplitDetail = () => {
       });
       return;
     }
+
     if (!billData.items[0]?.paid_by) {
       Swal.fire({
         icon: 'error',
@@ -161,20 +173,25 @@ export const SplitDetail = () => {
         date_created: new Date().toISOString(),
       });
 
-      Swal.close();
+    console.log('Server response:', response.data);
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Split confirmed and saved!',
-        timer: 2000,
-        showConfirmButton: false,
-      });
+    Swal.close();
 
-      navigate(`/group/${billData.group_id}`);
+    Swal.fire({
+      icon: 'success',
+      title: 'Split confirmed and saved!',
+      timer: 2000,
+      showConfirmButton: false,
+    });
+
+    navigate(`/group/${billData.group_id}`);
+
     } catch (error) {
       Swal.close();
+
       const errorMessage =
-        error.response?.data?.error || error.message || 'Failed to save bill';
+      error.response?.data?.error || error.message || 'Failed to save bill';
+
       Swal.fire({
         icon: 'error',
         title: 'Failed to save bill',
@@ -185,6 +202,24 @@ export const SplitDetail = () => {
     }
   };
 
+
+    if (!billData) {
+    return <div>No bill data available</div>;
+  }
+
+  // // Get the payer's name
+  // const payer = membersData.find(m => m.id === billData.items[0]?.paid_by);
+
+  // // Calculate tax amount
+  // const taxAmount = billData.tax ? subtotal * billData.tax : 0;
+  // // Calculate service amount
+  // const serviceAmount = billData.service || 0;
+  // // Calculate discount amount
+  // const discountAmount = billData.discount || 0;
+  // // Calculate total
+  // const total = subtotal + taxAmount + serviceAmount - discountAmount;
+
+  
   return (
     <div className="px-4 py-6 pb-24">
       {/* Top bar */}
@@ -220,7 +255,7 @@ export const SplitDetail = () => {
       {/* Box "You owe ..." */}
       <div className="py-2 px-4 bg-green-100 rounded text-center max-w-md mx-auto mt-5">
         <span className="text-gray-600">You owe </span>
-        <span className="text-red-600 font-semibold">{formatRupiah(memberTotal)}</span>
+        <span className="text-red-600 font-semibold">{formatRupiah(total)}</span>
         <span className="text-gray-600"> to {payeeName}</span>
       </div>
 
@@ -242,36 +277,58 @@ export const SplitDetail = () => {
           </button>
         </div>
       </div>
+
       {/* Bill Details List */}
       <div
         id="bill-details"
         className="bg-white shadow rounded p-1 max-h-96 overflow-auto"
       >
-        <div className="grid grid-cols-6 gap-2 border-b border-gray-300 pb-1 mb-2 text-gray-700 font-semibold text-sm">
-          <div className="col-span-3 text-left">Item</div>
-          <div className="col-span-1 text-center">Qty</div>
-          <div className="col-span-2 text-right">Harga</div>
-        </div>
-
         {/* Items */}
         {displayedItems.map((item, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-6 gap-2 py-1 border-b border-gray-100 text-sm"
-          >
+          <div key={index} className="grid grid-cols-6 gap-2 py-1 border-b border-gray-100 text-sm">
             <div className="col-span-3 text-left truncate">{item.name}</div>
-            <div className="col-span-1 text-center">{item.quantity || 1}</div>
+            <div className="col-span-1 text-center">{item.quantity || 1}x</div>
             <div className="col-span-2 text-right">
               {formatRupiah(item.nominal * (item.quantity || 1))}
             </div>
           </div>
         ))}
+
+      {/* Summary biaya */}
+      <div className="pt-4 space-y-2 text-sm text-gray-800">
+        <div className="flex justify-between font-semibold">
+          <span>Subtotal</span>
+          <span>{formatRupiah(subtotal)}</span>
+        </div>
+        {billData.tax > 0 && (
+          <div className="flex justify-between">
+            <span>Tax ({(billData.tax * 100).toFixed(2)}%)</span>
+            <span>{formatRupiah(taxAmount)}</span>
+          </div>        
+        )}
+        {billData.discount > 0 && (
+          <div className="flex justify-between">
+            <span>Discount</span>
+            <span>- {formatRupiah(discountAmount)}</span>
+          </div>
+        )}
+        {billData.service > 0 && (
+          <div className="flex justify-between">
+            <span>Service Fee</span>
+            <span>{formatRupiah(serviceAmount)}</span>
+          </div>
+        )}
+        {/* <div className="flex justify-between font-semibold border-t border-gray-400 pt-2">
+          <span>Total</span>
+          <span>{formatRupiah(total)}</span>
+        </div> */}
       </div>
+    </div>
 
       {/* Confirm Button */}
       <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
         <button
-          className="max-w-md w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded shadow transition disabled:opacity-50"
+          className="max-w-md w-full green-button font-semibold py-3 rounded shadow transition disabled:opacity-50"
           onClick={handleConfirmSplit}
           disabled={isConfirmDisabled}
           aria-label="Confirm bill split"
