@@ -1,19 +1,16 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { useUser } from "../context/UserContext";
+import { GoogleLogin } from '@react-oauth/google'; // ❗Hapus GoogleOAuthProvider dari sini
 
 export const Login = () => {
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { updateUser } = useUser();
-  
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevState) => ({
@@ -27,27 +24,48 @@ export const Login = () => {
     e.preventDefault(); 
     setError("");
     setIsLoading(true);
-    
+
     try {
       const response = await authService.login({
         username: formData.username,
         password: formData.password
       });
-      
-      console.log("Login successful:", response);
-      // Store the token in localStorage
+
       if (response.token) {
         localStorage.setItem('token', response.token);
-        // Update the user context with the user data
         updateUser(response.user);
         navigate("/main");
       }
     } catch (err) {
-      console.error("Login error:", err);
       setError(err.message || "Invalid username or password");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const response = await authService.loginWithGoogle({
+        token: credentialResponse.credential,
+      });
+
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        updateUser(response.user);
+        navigate("/main");
+      }
+    } catch (err) {
+      setError(err.message || "Google login failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleFailure = () => {
+    setError("Google login failed. Please try again.");
   };
 
   return (
@@ -118,6 +136,16 @@ export const Login = () => {
             {isLoading ? "Logging in..." : "Login"}
           </button>
         </form>
+
+        <div className="my-6 text-center">or</div>
+
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleFailure}
+            useOneTap
+          />
+        </div>
       </div>
     </section>
   );
