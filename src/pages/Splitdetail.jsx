@@ -21,10 +21,11 @@ export const SplitDetail = () => {
   useEffect(() => {
     console.log('SplitDetail Received Data:', {
       billData,
-      membersData
+      membersData,
+      paid_by: billData?.paid_by
     });
-     console.log('Processed billItems in useEffect:', billItems); // Log the processed items
-  }, [billData, membersData, billItems]); // Add dependencies
+    console.log('Processed billItems in useEffect:', billItems);
+  }, [billData, membersData, billItems]);
 
   // Format rupiah
   const formatRupiah = (number) => {
@@ -32,9 +33,37 @@ export const SplitDetail = () => {
   };
 
   // Calculate subtotal
-  // Use billItems which is guaranteed to be an array
-   console.log('Debug: billItems before reduce for subtotal:', billItems);
-  const subtotal = billItems.reduce((sum, item) => sum + (item.nominal), 0) || 0;
+  console.log('Debug: billItems before reduce for subtotal:', billItems);
+  const subtotal = billItems.reduce((sum, item) => {
+    const itemPrice = Number(item.nominal) || 0;
+    const itemQuantity = Number(item.quantity) || 1;
+    return sum + (itemPrice * itemQuantity);
+  }, 0);
+
+  // Get the payer's name from the first item's paid_by
+  const payerId = billItems.length > 0 ? billItems[0].paid_by : null;
+  console.log('Debug: payerId:', payerId);
+  const payer = payerId ? membersData.find(m => m.id === payerId) : null;
+  console.log('Debug: found payer:', payer);
+
+  // Calculate total - assuming tax, discount, and additionalFee are present in billData
+  const taxRate = Number(billData.tax) || 0;
+  const discountRate = Number(billData.discount) || 0;
+  const additionalFeeAmount = Number(billData.additionalFee) || 0;
+
+  const taxAmount = subtotal * taxRate;
+  const discountAmount = subtotal * discountRate;
+  const total = subtotal + taxAmount + additionalFeeAmount - discountAmount;
+
+  console.log('Debug: Calculation values:', {
+    subtotal,
+    taxRate,
+    discountRate,
+    additionalFeeAmount,
+    taxAmount,
+    discountAmount,
+    total
+  });
 
   const handleSave = async () => {
     try {
@@ -43,20 +72,22 @@ export const SplitDetail = () => {
       // Prepare items for backend, using the already calculated nominal
       const itemsForSave = billItems.map(item => ({
         name: item.name,
-        nominal: item.nominal, // nominal is already calculated total from Scannedbill
-        who_to_paid: item.who_to_paid
+        nominal: item.nominal,
+        who_to_paid: item.who_to_paid || []
       }));
 
       const billDataToSave = {
-        group_id: billData?.group_id, // Use optional chaining
-        // Assuming the first item's who_to_paid[0] is the bill payer - may need refinement
-        paid_by: itemsForSave.length > 0 && itemsForSave[0].who_to_paid.length > 0 ? itemsForSave[0].who_to_paid[0] : null,
+        group_id: billData?.group_id,
+        paid_by: payerId, // Use the payerId from the first item
         items: itemsForSave,
-        bill_picture: billData?.bill_picture || null, // Use optional chaining and fallback to null
+        tax: taxRate,
+        discount: discountRate,
+        service: additionalFeeAmount,
+        bill_picture: billData?.bill_picture || null,
         date_created: new Date()
       };
 
-      console.log('Creating bill with data:', billDataToSave); // Debug log
+      console.log('Creating bill with data:', billDataToSave);
 
       const response = await api.post('/api/bills', billDataToSave);
 
@@ -68,7 +99,7 @@ export const SplitDetail = () => {
           showConfirmButton: false,
           timer: 1500
         });
-        navigate(`/group/${billData?.group_id}`); // Use optional chaining
+        navigate(`/group/${billData?.group_id}`);
       }
     } catch (error) {
       console.error('Error saving bill:', error);
@@ -85,19 +116,6 @@ export const SplitDetail = () => {
   if (!billData) {
     return <div>Loading bill data...</div>; // Indicate loading or no data
   }
-
-  // Get the payer's name (based on the logic used in handleSave)
-   const payerId = billItems.length > 0 && billItems[0].who_to_paid.length > 0 ? billItems[0].who_to_paid[0] : null;
-  const payer = payerId ? membersData.find(m => m.id === payerId) : null;
-
-  // Calculate total - assuming tax, discount, and additionalFee are present in billData
-  const taxRate = billData.tax || 0; // Use 0 if tax is missing
-  const discountRate = billData.discount || 0; // Use 0 if discount is missing
-  const additionalFeeAmount = billData.additionalFee || 0; // Use 0 if additionalFee is missing
-
-  const taxAmount = subtotal * taxRate; // Apply tax rate to subtotal
-  const discountAmount = subtotal * discountRate; // Apply discount rate to subtotal
-  const total = subtotal + taxAmount + additionalFeeAmount - discountAmount;
 
   return (
     <div className="px-4 py-6 pb-24">

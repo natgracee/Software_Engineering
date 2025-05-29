@@ -193,12 +193,12 @@ export const Groupdetail = () => {
       .reduce((sum, bill) => {
         // If bill has total_amount, use it directly
         if (bill.total_amount) {
-          return sum + bill.total_amount;
+          return sum + Number(bill.total_amount);
         }
         // Otherwise calculate from items
         const billTotal = bill.items?.reduce((itemSum, item) => {
-          const itemPrice = item.nominal || item.price || 0;
-          const itemQuantity = item.quantity || 1;
+          const itemPrice = Number(item.nominal || item.price || 0);
+          const itemQuantity = Number(item.quantity || 1);
           return itemSum + (itemPrice * itemQuantity);
         }, 0) || 0;
         return sum + billTotal;
