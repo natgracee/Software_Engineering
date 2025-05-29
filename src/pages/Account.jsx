@@ -1,27 +1,70 @@
 import { MdArrowBack, MdEdit } from 'react-icons/md';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
+import { useUser } from '../context/UserContext';
 
 export const Account = () => {
+  const { user, updateUser } = useUser();
   const [isEditing, setIsEditing] = useState(false);
-  const [username, setUsername] = useState('John Doe');
-  const [email, setEmail] = useState('john@example.com');
+  const [username, setUsername] = useState(user?.username || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [newUsername, setNewUsername] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [profilePic, setProfilePic] = useState('/path/to/profile-pic.jpg'); // Gambar default profil
-  const [isProfilePicEditing, setIsProfilePicEditing] = useState(false); // State untuk mengontrol profil gambar edit
-  const navigate = useNavigate(); // Hook untuk navigasi
+  const [profilePic, setProfilePic] = useState('/path/to/profile-pic.jpg');
+  const [isProfilePicEditing, setIsProfilePicEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-  const handleConfirmEdit = () => {
-    if (newUsername && newUsername !== username) setUsername(newUsername);
-    if (newEmail && newEmail !== email) setEmail(newEmail);
-    setIsEditing(false);
-    setIsProfilePicEditing(false); // Menutup edit profil pic setelah simpan
+  // Update local state when user context changes
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username);
+      setEmail(user.email);
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  const handleConfirmEdit = async () => {
+    try {
+      const updateData = {};
+      if (newUsername && newUsername !== username) updateData.username = newUsername;
+      if (newEmail && newEmail !== email) updateData.email = newEmail;
+
+      if (Object.keys(updateData).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      const response = await authService.updateProfile(updateData);
+      // Update the global user state
+      updateUser(response.user);
+      
+      setUsername(response.user.username);
+      setEmail(response.user.email);
+      setNewUsername('');
+      setNewEmail('');
+      setIsEditing(false);
+      setIsProfilePicEditing(false);
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to update profile');
+      console.error('Profile update error:', err);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    localStorage.removeItem('user');
-    navigate('/login');
+  const handleDeleteAccount = async () => {
+    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      try {
+        await authService.deleteAccount();
+        await authService.logout();
+        navigate('/login');
+      } catch (err) {
+        setError('Failed to delete account');
+        console.error('Account deletion error:', err);
+      }
+    }
   };
 
   const handleProfilePicChange = (e) => {
@@ -30,11 +73,19 @@ export const Account = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfilePic(reader.result);
-        setIsProfilePicEditing(false); // Menutup profil pic edit setelah simpan
+        setIsProfilePicEditing(false);
       };
       reader.readAsDataURL(file);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <section className="px-4 py-6 min-h-screen flex items-center justify-center">
@@ -48,6 +99,15 @@ export const Account = () => {
         </button>
         <h1 className="text-xl font-semibold text-center w-full">Profile</h1>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-full px-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        </div>
+      )}
 
       {/* Profile Section */}
       <div className="bg-gray-200 p-6 rounded-lg shadow-sm space-y-4 max-w-md w-full">
@@ -64,7 +124,7 @@ export const Account = () => {
           {/* Tombol Edit Profil Pic */}
           {isEditing && !isProfilePicEditing && (
             <button
-              onClick={() => setIsProfilePicEditing(true)} // Memulai edit gambar profil
+              onClick={() => setIsProfilePicEditing(true)}
               className="absolute bottom-0 translate-x-1/2 translate-y-1/2 bg-gray-500 text-white p-2 rounded-full"
             >
               <MdEdit size={16} />

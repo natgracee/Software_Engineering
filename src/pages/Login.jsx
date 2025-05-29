@@ -1,29 +1,71 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-
+import { Link, useNavigate } from "react-router-dom";
+import { authService } from "../services/authService";
+import { useUser } from "../context/UserContext";
+import { GoogleLogin } from '@react-oauth/google'; // ❗Hapus GoogleOAuthProvider dari sini
 
 export const Login = () => {
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-  });
-
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  
+  const { updateUser } = useUser();
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevState) => ({
       ...prevState,
       [name]: value,
     }));
+    if (error) setError("");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Login form submitted:", formData);
+  const handleSubmit = async (e) => {
+    e.preventDefault(); 
+    setError("");
+    setIsLoading(true);
 
-    navigate("/main", { state: { username: formData.username } });
+    try {
+      const response = await authService.login({
+        username: formData.username,
+        password: formData.password
+      });
+
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        updateUser(response.user);
+        navigate("/main");
+      }
+    } catch (err) {
+      setError(err.message || "Invalid username or password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const response = await authService.loginWithGoogle({
+        token: credentialResponse.credential,
+      });
+
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        updateUser(response.user);
+        navigate("/main");
+      }
+    } catch (err) {
+      setError(err.message || "Google login failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleFailure = () => {
+    setError("Google login failed. Please try again.");
   };
 
   return (
@@ -35,12 +77,18 @@ export const Login = () => {
       <div className="w-full max-w-md">
         <div className="text-left mb-8">
           <h2 className="text-muted-foreground text-xl">We missed you!</h2>
-          <p className="text-2xl font-bold">Sign in and let’s roll.</p>
+          <p className="text-2xl font-bold">Sign in and let's roll.</p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col text-left">
-            <label htmlFor="username" className="text-sm font-medium">Username</label> {/* Menambahkan Username */}
+            <label htmlFor="username" className="text-sm font-medium">Username</label>
             <input
               type="text"
               name="username"
@@ -49,6 +97,7 @@ export const Login = () => {
               onChange={handleInputChange}
               required
               className="mt-1 p-2 border border-gray-300 rounded-md"
+              disabled={isLoading}
             />
           </div>
 
@@ -62,6 +111,7 @@ export const Login = () => {
               onChange={handleInputChange}
               required
               className="mt-1 p-2 border border-gray-300 rounded-md"
+              disabled={isLoading}
             />
           </div>
 
@@ -78,10 +128,24 @@ export const Login = () => {
             </Link>
           </p>
 
-          <button type="submit" className="green-button w-full py-3 text-lg font-semibold">
-            Login
+          <button 
+            type="submit" 
+            className="green-button w-full py-3 text-lg font-semibold"
+            disabled={isLoading}
+          >
+            {isLoading ? "Logging in..." : "Login"}
           </button>
         </form>
+
+        <div className="my-6 text-center">or</div>
+
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleFailure}
+            useOneTap
+          />
+        </div>
       </div>
     </section>
   );
