@@ -186,6 +186,25 @@ export const Groupdetail = () => {
     }).format(amount);
   };
 
+  // Calculate total amount
+  const calculateTotalAmount = () => {
+    return bills
+      .filter(bill => !bill.summarized) // Only count bills that haven't been summarized
+      .reduce((sum, bill) => {
+        // If bill has total_amount, use it directly
+        if (bill.total_amount) {
+          return sum + bill.total_amount;
+        }
+        // Otherwise calculate from items
+        const billTotal = bill.items?.reduce((itemSum, item) => {
+          const itemPrice = item.nominal || item.price || 0;
+          const itemQuantity = item.quantity || 1;
+          return itemSum + (itemPrice * itemQuantity);
+        }, 0) || 0;
+        return sum + billTotal;
+      }, 0);
+  };
+
   // Handle Bill Deletion
   const handleDeleteBill = async (billId) => {
     Swal.fire({
@@ -243,8 +262,8 @@ export const Groupdetail = () => {
         html: `
           <div class="text-left">
             <p class="mb-2">The bills have been successfully summarized.</p>
-            <p class="text-sm text-gray-600">Total Bills: ${bills.length}</p>
-            <p class="text-sm text-gray-600">Total Amount: ${formatCurrency(bills.reduce((sum, bill) => sum + bill.total_amount, 0))}</p>
+            <p class="text-sm text-gray-600">Total Bills: ${bills.filter(bill => !bill.summarized).length}</p>
+            <p class="text-sm text-gray-600">Total Amount: ${formatCurrency(calculateTotalAmount())}</p>
           </div>
         `,
         confirmButtonText: 'View Summary',
@@ -268,7 +287,6 @@ export const Groupdetail = () => {
         html: `
           <div class="text-left">
             <p class="mb-2">${error.response?.data?.error || 'Failed to summarize bills'}</p>
-            <p class="text-sm text-gray-600">${error.response?.data?.details || 'Please try again later.'}</p>
           </div>
         `,
         confirmButtonText: 'Try Again',
