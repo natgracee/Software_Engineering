@@ -11,13 +11,20 @@ export const SplitDetail = () => {
   const { billData, membersData = [] } = location.state || {};
   const [loading, setLoading] = useState(false);
 
+  // Ensure billData.items is a valid array, default to empty array if not
+  // Add logging to debug the value before creating billItems
+  console.log('Debug: billData before creating billItems:', billData);
+  const billItems = Array.isArray(billData?.items) ? billData.items : [];
+   console.log('Debug: billItems after creation:', billItems);
+
   // Debug logs
   useEffect(() => {
     console.log('SplitDetail Received Data:', {
       billData,
       membersData
     });
-  }, [location.state]);
+     console.log('Processed billItems in useEffect:', billItems); // Log the processed items
+  }, [billData, membersData, billItems]); // Add dependencies
 
   // Format rupiah
   const formatRupiah = (number) => {
@@ -25,27 +32,34 @@ export const SplitDetail = () => {
   };
 
   // Calculate subtotal
-  const subtotal = billData?.items?.reduce((sum, item) => sum + (item.nominal), 0) || 0;
+  // Use billItems which is guaranteed to be an array
+   console.log('Debug: billItems before reduce for subtotal:', billItems);
+  const subtotal = billItems.reduce((sum, item) => sum + (item.nominal), 0) || 0;
 
   const handleSave = async () => {
     try {
       setLoading(true);
-      const billData = {
-        group_id: location.state.billData.group_id,
-        paid_by: location.state.billData.items[0].paid_by,
-        items: location.state.billData.items.map(item => ({
-          name: item.name,
-          nominal: item.nominal,
-          who_to_paid: item.who_to_paid
-        })),
-        bill_picture: location.state.billData.bill_picture,
+
+      // Prepare items for backend, using the already calculated nominal
+      const itemsForSave = billItems.map(item => ({
+        name: item.name,
+        nominal: item.nominal, // nominal is already calculated total from Scannedbill
+        who_to_paid: item.who_to_paid
+      }));
+
+      const billDataToSave = {
+        group_id: billData?.group_id, // Use optional chaining
+        // Assuming the first item's who_to_paid[0] is the bill payer - may need refinement
+        paid_by: itemsForSave.length > 0 && itemsForSave[0].who_to_paid.length > 0 ? itemsForSave[0].who_to_paid[0] : null,
+        items: itemsForSave,
+        bill_picture: billData?.bill_picture || null, // Use optional chaining and fallback to null
         date_created: new Date()
       };
 
-      console.log('Creating bill with data:', billData); // Debug log
+      console.log('Creating bill with data:', billDataToSave); // Debug log
 
-      const response = await api.post('/api/bills', billData);
-      
+      const response = await api.post('/api/bills', billDataToSave);
+
       if (response.status === 201) {
         Swal.fire({
           icon: 'success',
@@ -54,7 +68,7 @@ export const SplitDetail = () => {
           showConfirmButton: false,
           timer: 1500
         });
-        navigate(`/group/${location.state.billData.group_id}`);
+        navigate(`/group/${billData?.group_id}`); // Use optional chaining
       }
     } catch (error) {
       console.error('Error saving bill:', error);
@@ -69,20 +83,21 @@ export const SplitDetail = () => {
   };
 
   if (!billData) {
-    return <div>No bill data available</div>;
+    return <div>Loading bill data...</div>; // Indicate loading or no data
   }
 
-  // Get the payer's name
-  const payer = membersData.find(m => m.id === billData.items[0]?.paid_by);
+  // Get the payer's name (based on the logic used in handleSave)
+   const payerId = billItems.length > 0 && billItems[0].who_to_paid.length > 0 ? billItems[0].who_to_paid[0] : null;
+  const payer = payerId ? membersData.find(m => m.id === payerId) : null;
 
-  // Calculate tax amount
-  const taxAmount = billData.tax ? subtotal * billData.tax : 0;
-  // Calculate service amount
-  const serviceAmount = billData.service || 0;
-  // Calculate discount amount
-  const discountAmount = billData.discount || 0;
-  // Calculate total
-  const total = subtotal + taxAmount + serviceAmount - discountAmount;
+  // Calculate total - assuming tax, discount, and additionalFee are present in billData
+  const taxRate = billData.tax || 0; // Use 0 if tax is missing
+  const discountRate = billData.discount || 0; // Use 0 if discount is missing
+  const additionalFeeAmount = billData.additionalFee || 0; // Use 0 if additionalFee is missing
+
+  const taxAmount = subtotal * taxRate; // Apply tax rate to subtotal
+  const discountAmount = subtotal * discountRate; // Apply discount rate to subtotal
+  const total = subtotal + taxAmount + additionalFeeAmount - discountAmount;
 
   return (
     <div className="px-4 py-6 pb-24">
@@ -108,16 +123,18 @@ export const SplitDetail = () => {
 
       {/* Daftar item */}
       <div className="bg-gray-100 p-4 rounded shadow min-h-[150px] font-mono text-sm whitespace-pre-wrap">
-        {billData.items.length === 0 ? (
+        {/* Use billItems for rendering, checking its length */}
+        {billItems.length === 0 ? (
           <p className="text-gray-500 italic">Tidak ada item.</p>
         ) : (
-          billData.items.map((item, index) => (
+          billItems.map((item, index) => (
             <div key={index} className="mb-4 border-b border-gray-300 pb-2">
               <div className="font-semibold">
+                {/* Display quantity and nominal (total price per item) */}
                 {item.quantity}x {item.name} - {formatRupiah(item.nominal)}
               </div>
               <div className="flex flex-wrap gap-2 mt-1">
-                {item.who_to_paid.length === 0 ? (
+                {item.who_to_paid?.length === 0 || !item.who_to_paid ? ( // Use optional chaining
                   <span className="text-xs italic text-gray-400">Belum diassign</span>
                 ) : (
                   item.who_to_paid.map(memberId => {
@@ -143,22 +160,22 @@ export const SplitDetail = () => {
             <span>Subtotal</span>
             <span>{formatRupiah(subtotal)}</span>
           </div>
-          {billData.tax > 0 && (
+          {taxRate > 0 && (
             <div className="flex justify-between">
-              <span>Tax ({(billData.tax * 100).toFixed(2)}%)</span>
+              <span>Tax ({(taxRate * 100).toFixed(2)}%)</span>
               <span>{formatRupiah(taxAmount)}</span>
             </div>
           )}
-          {billData.discount > 0 && (
+          {discountRate > 0 && (
             <div className="flex justify-between">
               <span>Discount</span>
               <span>- {formatRupiah(discountAmount)}</span>
             </div>
           )}
-          {billData.service > 0 && (
+          {additionalFeeAmount > 0 && (
             <div className="flex justify-between">
-              <span>Service Fee</span>
-              <span>{formatRupiah(serviceAmount)}</span>
+              <span>Additional Fee</span>
+              <span>{formatRupiah(additionalFeeAmount)}</span>
             </div>
           )}
           <div className="flex justify-between font-semibold border-t border-gray-400 pt-2">

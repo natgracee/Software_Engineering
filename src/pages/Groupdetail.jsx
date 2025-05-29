@@ -491,6 +491,13 @@ export const Groupdetail = () => {
           <span>Gallery Scan</span>
         </button>
         <button
+          onClick={() => navigate(`/manualbill/${id}`)}
+          className="green-button py-2 px-4 rounded flex items-center space-x-2 flex-1 min-w-[140px]"
+        >
+          <MdReceipt size={20} />
+          <span>Add Manual Bill</span>
+        </button>
+        <button
           onClick={handleSummarizeBills}
           disabled={summarizing || bills.length === 0}
           className={`green-button py-2 px-4 rounded flex items-center space-x-2 transition-all duration-200 flex-1 min-w-[140px] ${

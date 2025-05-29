@@ -128,10 +128,10 @@ export const Splitbill = () => {
       tax: tax || 0,
       service: additionalFee || 0,
       discount: discount || 0,
-      bill_picture: location.state?.bill_picture // Make sure this is passed from Scannedbill
+      bill_picture: location.state?.bill_picture // Add bill picture from state
     };
 
-    console.log('Passing to SplitDetail:', formattedBill); // Debug log
+    console.log('Passing to SplitDetail:', formattedBill);
 
     navigate('/splitdetail', {
       state: {
