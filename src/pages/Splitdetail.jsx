@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MdArrowBack } from 'react-icons/md';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -9,6 +9,7 @@ export const SplitDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { billData, membersData = [] } = location.state || {};
+  const [loading, setLoading] = useState(false);
 
   // Debug logs
   useEffect(() => {
@@ -26,101 +27,44 @@ export const SplitDetail = () => {
   // Calculate subtotal
   const subtotal = billData?.items?.reduce((sum, item) => sum + (item.nominal), 0) || 0;
 
-  const handleConfirmSplit = async () => {
-    // Debug log to see what data we're sending
-    console.log('Bill Data Structure:', {
-      group_id: billData.group_id,
-      items: billData.items,
-      paid_by: billData.items[0]?.paid_by,
-      tax: billData.tax,
-      service: billData.service,
-      discount: billData.discount
-    });
-
-    // Validate required fields
-    if (!billData.group_id) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Group ID',
-        text: 'Group ID is required to save the bill',
-        timer: 3000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
-    if (!billData.items || billData.items.length === 0) {
-      Swal.fire({
-        icon: 'error',
-        title: 'No Items',
-        text: 'At least one item is required to save the bill',
-        timer: 3000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
-    if (!billData.items[0]?.paid_by) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Payer',
-        text: 'Payer information is required to save the bill',
-        timer: 3000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
-    Swal.fire({
-      title: 'Processing...',
-      didOpen: () => {
-        Swal.showLoading();
-      },
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      allowEnterKey: false,
-      showConfirmButton: false,
-    });
-
+  const handleSave = async () => {
     try {
-      const response = await api.post('/api/bills', {
-        group_id: billData.group_id,
-        paid_by: billData.items[0]?.paid_by,
-        items: billData.items.map(item => ({
+      setLoading(true);
+      const billData = {
+        group_id: location.state.billData.group_id,
+        paid_by: location.state.billData.items[0].paid_by,
+        items: location.state.billData.items.map(item => ({
           name: item.name,
           nominal: item.nominal,
           who_to_paid: item.who_to_paid
         })),
-        date_created: new Date().toISOString()
-      });
+        bill_picture: location.state.billData.bill_picture,
+        date_created: new Date()
+      };
 
-      console.log('Server response:', response.data);
+      console.log('Creating bill with data:', billData); // Debug log
 
-      Swal.close();
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Split confirmed and saved!',
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      navigate(`/group/${billData.group_id}`);
-
+      const response = await api.post('/api/bills', billData);
+      
+      if (response.status === 201) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: 'Bill saved successfully',
+          showConfirmButton: false,
+          timer: 1500
+        });
+        navigate(`/group/${location.state.billData.group_id}`);
+      }
     } catch (error) {
       console.error('Error saving bill:', error);
-      Swal.close();
-      
-      // More detailed error message
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to save bill';
-      
       Swal.fire({
         icon: 'error',
-        title: 'Failed to save bill',
-        text: errorMessage,
-        timer: 3000,
-        showConfirmButton: false,
+        title: 'Error',
+        text: error.response?.data?.error || 'Failed to save bill'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -228,9 +172,10 @@ export const SplitDetail = () => {
       <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
         <button
           className="max-w-md w-full green-button font-semibold py-3 rounded shadow transition"
-          onClick={handleConfirmSplit}
+          onClick={handleSave}
+          disabled={loading}
         >
-          Confirm Split
+          {loading ? 'Saving...' : 'Confirm Split'}
         </button>
       </div>
     </div>

@@ -108,31 +108,31 @@ export const Newgroup = () => {
             <h2 className="text-2xl font-bold text-gray-900">Create New Group</h2>
           </div>
 
-          {/* Group Name */}
+        {/* Group Name */}
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">Group Name</label>
-            <input
-              type="text"
+          <input
+            type="text"
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-              placeholder="Enter group name"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              disabled={creatingGroup}
-            />
-          </div>
+            placeholder="Enter group name"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            disabled={creatingGroup}
+          />
+        </div>
 
-          {/* Group Photo */}
+        {/* Group Photo */}
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">Group Photo (Optional)</label>
             <div className="relative">
-              <input
-                type="file"
-                accept="image/*"
+          <input
+            type="file"
+            accept="image/*"
                 className="hidden"
                 id="group-photo"
                 onChange={handleFileChange}
-                disabled={creatingGroup}
-              />
+            disabled={creatingGroup}
+          />
               <label
                 htmlFor="group-photo"
                 className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
@@ -154,53 +154,53 @@ export const Newgroup = () => {
                 )}
               </label>
             </div>
-          </div>
-
-          <button
-            onClick={handleCreateGroup}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-            disabled={creatingGroup}
-          >
-            {creatingGroup ? 'Creating...' : 'Create Group'}
-          </button>
-
-          {/* Show Invite Link */}
-          {inviteLink && (
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 mb-3">Invite Link</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  className="flex-1 p-3 border border-gray-300 rounded-lg bg-white"
-                  value={inviteLink}
-                  readOnly
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(inviteLink);
-                    alert('Invite link copied to clipboard!');
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <MdContentCopy size={20} />
-                  <span>Copy</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Back to Group List Button */}
+        <button
+          onClick={handleCreateGroup}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+          disabled={creatingGroup}
+        >
+          {creatingGroup ? 'Creating...' : 'Create Group'}
+        </button>
+
+        {/* Show Invite Link */}
         {inviteLink && (
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={() => navigate('/grouplist')}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg transition-colors"
-            >
-              Back to Group List
-            </button>
+            <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm font-medium text-gray-700 mb-3">Invite Link</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                  className="flex-1 p-3 border border-gray-300 rounded-lg bg-white"
+                value={inviteLink}
+                readOnly
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteLink);
+                  alert('Invite link copied to clipboard!');
+                }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center gap-2"
+              >
+                  <MdContentCopy size={20} />
+                  <span>Copy</span>
+              </button>
+            </div>
           </div>
         )}
+      </div>
+
+        {/* Back to Group List Button */}
+      {inviteLink && (
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={() => navigate('/grouplist')}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg transition-colors"
+          >
+            Back to Group List
+          </button>
+        </div>
+      )}
       </div>
     </section>
   );

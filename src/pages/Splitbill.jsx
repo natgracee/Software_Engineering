@@ -104,9 +104,9 @@ export const Splitbill = () => {
     alert(`Bill telah dibagi 100% ke anggota: ${membersData.find(m => m.id === selectedMember)?.name}`);
   };
 
-  const handleNext = () => {
+  const handleConfirm = () => {
     if (!paidBy) {
-      alert('Pilih siapa yang membayar bill ini!');
+      setError('Please select who paid for the bill');
       return;
     }
 
@@ -127,10 +127,11 @@ export const Splitbill = () => {
       }),
       tax: tax || 0,
       service: additionalFee || 0,
-      discount: discount || 0
+      discount: discount || 0,
+      bill_picture: location.state?.bill_picture // Make sure this is passed from Scannedbill
     };
 
-    console.log('Passing to SplitDetail:', formattedBill);
+    console.log('Passing to SplitDetail:', formattedBill); // Debug log
 
     navigate('/splitdetail', {
       state: {
@@ -288,7 +289,7 @@ export const Splitbill = () => {
       <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
         <button
           className="max-w-md w-full green-button font-semibold py-3 rounded shadow transition"
-          onClick={handleNext}
+          onClick={handleConfirm}
           type="button"
         >
           Next

@@ -11,7 +11,7 @@ export const Account = () => {
   const [email, setEmail] = useState(user?.email || '');
   const [newUsername, setNewUsername] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [profilePic, setProfilePic] = useState('/path/to/profile-pic.jpg');
+  const [profilePic, setProfilePic] = useState(null);
   const [isProfilePicEditing, setIsProfilePicEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,6 +22,7 @@ export const Account = () => {
     if (user) {
       setUsername(user.username);
       setEmail(user.email);
+      setProfilePic(user.profile_picture ? `http://localhost:5000/uploads/profile-photos/${user.profile_picture}` : null);
       setIsLoading(false);
     }
   }, [user]);
@@ -67,15 +68,29 @@ export const Account = () => {
     }
   };
 
-  const handleProfilePicChange = (e) => {
+  const handleProfilePicChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePic(reader.result);
-        setIsProfilePicEditing(false);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+
+      const response = await authService.updateProfilePhoto(formData);
+      
+      // Update the profile picture in the UI
+      setProfilePic(`http://localhost:5000/uploads/profile-photos/${response.profile_picture}`);
+      
+      // Update the user context with new profile picture
+      updateUser({
+        ...user,
+        profile_picture: response.profile_picture
+      });
+
+      setIsProfilePicEditing(false);
+    } catch (error) {
+      setError('Failed to update profile picture');
+      console.error('Error updating profile picture:', error);
     }
   };
 
@@ -114,11 +129,17 @@ export const Account = () => {
         {/* Foto Profil */}
         <div className="relative flex justify-center group">
           <div className="w-24 h-24 bg-gray-300 rounded-full overflow-hidden">
-            <img
-              src={profilePic}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
+            {profilePic ? (
+              <img
+                src={profilePic}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                <span className="text-4xl text-gray-400">{username?.charAt(0).toUpperCase()}</span>
+              </div>
+            )}
           </div>
 
           {/* Tombol Edit Profil Pic */}

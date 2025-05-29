@@ -3,19 +3,50 @@ import Tesseract from 'tesseract.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MdArrowBack, MdClear } from 'react-icons/md';
 import { llmService } from '../services/llmService';
+import api from '../config/api';
+import Swal from 'sweetalert2';
+import { useUser } from '../context/UserContext';
 
 // Fungsi format harga ke ribuan IDR
 function formatPrice(num) {
   return num.toLocaleString('id-ID');
 }
 
+// Function to compress image
+const compressImage = (base64String, maxWidth = 800) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64String;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > maxWidth) {
+        height = (maxWidth * height) / width;
+        width = maxWidth;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convert to JPEG with 0.7 quality
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      resolve(compressedBase64);
+    };
+  });
+};
+
 export const Scannedbill = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
   const groupId = location.state?.groupId; 
   const [ocrText, setOcrText] = useState('');
   const [status, setStatus] = useState('Memuat gambar...');
-  const [billData, setBillData] = useState(null); // array of {name, quantity, price}
+  const [billData, setBillData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const processingRef = useRef(false);
@@ -26,6 +57,11 @@ export const Scannedbill = () => {
   const [additionalFee, setAdditionalFee] = useState(0); // nominal IDR
 
   const image = location.state?.image;
+
+  // Debug log for user data
+  useEffect(() => {
+    console.log('User context:', user);
+  }, [user]);
 
   const processWithLLM = async (text) => {
     try {
@@ -133,18 +169,51 @@ export const Scannedbill = () => {
     }
   }
 
-  function handleConfirm() {
-    if (!billData || billData.length === 0) {
-      alert('Data bill belum tersedia atau kosong');
+  const handleConfirm = async () => {
+    try {
+      if (!image) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error!',
+          text: 'No image available to upload',
+        });
       return;
     }
-    if (groupId) {
-      // Kirim juga tax, discount, additionalFee
-      navigate(`/splitbill/${groupId}`, { state: { billData, tax, discount, additionalFee } });
-    } else {
-      alert('Group ID not available. Cannot proceed to split bill.');
+
+      // Convert base64 to blob
+      const imageResponse = await fetch(image);
+      const blob = await imageResponse.blob();
+      const file = new File([blob], 'bill.jpg', { type: 'image/jpeg' });
+
+      // First upload the image
+      const formData = new FormData();
+      formData.append('bill_picture', file);
+
+      const uploadResponse = await api.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Navigate to split bill with the data
+      navigate(`/splitbill/${groupId}`, { 
+        state: { 
+          billData, 
+          tax, 
+          discount, 
+          additionalFee,
+          bill_picture: uploadResponse.data.filePath
+        } 
+      });
+    } catch (error) {
+      console.error('Error processing image:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: error.response?.data?.message || 'Failed to process image',
+      });
     }
-  }
+  };
 
   function handleClear() {
     setBillData(null);

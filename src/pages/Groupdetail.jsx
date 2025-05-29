@@ -10,7 +10,8 @@ import {
   MdSummarize,
   MdReceipt,
   MdClose,
-  MdGroup
+  MdGroup,
+  MdDelete
 } from 'react-icons/md';
 import { authService } from '../services/authService';
 import api from '../config/api';
@@ -75,26 +76,8 @@ export const Groupdetail = () => {
       }
     };
 
-    const fetchInvoices = async () => {
-      try {
-        setLoadingInvoices(true);
-        const response = await api.get(`/api/invoices/group/${id}`);
-        setInvoices(response.data);
-      } catch (err) {
-        console.error('Error fetching invoices:', err);
-        Swal.fire({
-          icon: 'error',
-          title: 'Failed to Load Invoices',
-          text: 'Could not load invoices. Please try again later.'
-        });
-      } finally {
-        setLoadingInvoices(false);
-      }
-    };
-
     fetchGroup();
     fetchBills();
-    fetchInvoices();
   }, [id]);
 
   const handlePhotoChange = async (e) => {
@@ -203,6 +186,39 @@ export const Groupdetail = () => {
     }).format(amount);
   };
 
+  // Handle Bill Deletion
+  const handleDeleteBill = async (billId) => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await api.delete(`/api/bills/${billId}`);
+          // Remove the deleted bill from state
+          setBills(prevBills => prevBills.filter(bill => bill.bill_id !== billId));
+          Swal.fire(
+            'Deleted!',
+            'The bill has been deleted.',
+            'success'
+          );
+        } catch (error) {
+          console.error('Error deleting bill:', error);
+          Swal.fire(
+            'Failed!',
+            error.response?.data?.message || 'There was an error deleting the bill.',
+            'error'
+          );
+        }
+      }
+    });
+  };
+
   const handleSummarizeBills = async () => {
     try {
       setSummarizing(true);
@@ -236,8 +252,8 @@ export const Groupdetail = () => {
         cancelButtonText: 'Close'
       }).then((result) => {
         if (result.isConfirmed) {
-          // TODO: Navigate to summary view when implemented
-          console.log('Navigate to summary view');
+          // Navigate to summary view
+          navigate(`/summary/${id}`);
         }
       });
 
@@ -252,7 +268,7 @@ export const Groupdetail = () => {
         html: `
           <div class="text-left">
             <p class="mb-2">${error.response?.data?.error || 'Failed to summarize bills'}</p>
-            <p class="text-sm text-gray-600">Please try again later.</p>
+            <p class="text-sm text-gray-600">${error.response?.data?.details || 'Please try again later.'}</p>
           </div>
         `,
         confirmButtonText: 'Try Again',
@@ -265,8 +281,20 @@ export const Groupdetail = () => {
   };
 
   const handleViewInvoices = async () => {
-    setShowInvoices(true);
-    await fetchInvoices();
+    try {
+      setLoadingInvoices(true);
+      // Navigate to invoice view
+      navigate(`/invoices/${id}`);
+    } catch (error) {
+      console.error('Error navigating to invoices:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed to Load Invoices',
+        text: 'Could not load invoices. Please try again later.'
+      });
+    } finally {
+      setLoadingInvoices(false);
+    }
   };
 
   if (loading) {
@@ -490,37 +518,83 @@ export const Groupdetail = () => {
         ) : (
           <div className="space-y-4">
             {bills.map((bill) => (
-              <div key={bill.bill_id} className="bg-white p-4 rounded-lg shadow">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="text-sm text-gray-500">{formatDate(bill.date_created)}</p>
-                    <p className="font-semibold">{bill.item_count} items</p>
-                    <p className={`text-xs ${bill.summarized ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {bill.summarized ? '✓ Summarized' : 'Pending summary'}
-                    </p>
-                  </div>
-                  <p className="font-bold text-green-600">{formatCurrency(bill.total_amount)}</p>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <p>Paid by: {bill.paid_by_name}</p>
-                </div>
-                <div className="mt-2 pt-2 border-t">
-                  <p className="text-sm font-semibold mb-1">Items:</p>
-                  <ul className="text-sm text-gray-600">
-                    {bill.items.map((item) => (
-                      <li key={item.item_id} className="flex justify-between items-center">
-                        <div>
-                          <span>{item.item_name}</span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {item.paid_by_name === bill.paid_by_name ? 
-                              "(bill owner)" : 
-                              `(to be paid by: ${item.paid_by_name})`}
-                          </span>
+              <div 
+                key={bill.bill_id} 
+                className="bg-white p-4 rounded-lg shadow relative cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate(`/bill/${bill.bill_id}`)}
+              >
+                {!bill.summarized && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent navigation when clicking delete
+                      handleDeleteBill(bill.bill_id);
+                    }}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors z-10"
+                    title="Delete Bill"
+                    aria-label="Delete Bill"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                )}
+                <div className="flex items-start gap-4 pr-10">
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-medium text-gray-900">Paid by {bill.paid_by_name}</p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(bill.date_created).toLocaleDateString('id-ID', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <div className="text-right mb-1">
+                          <p className="text-sm text-gray-500">Total Amount</p>
+                          <p className="font-semibold text-green-600">
+                            {new Intl.NumberFormat('id-ID', {
+                              style: 'currency',
+                              currency: 'IDR'
+                            }).format(bill.total_amount)}
+                          </p>
                         </div>
-                        <span>{formatCurrency(item.item_price)}</span>
-                      </li>
-                    ))}
-                  </ul>
+                        <div className="flex items-center gap-1">
+                          {bill.summarized ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Summarized
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                              </svg>
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <p>{bill.item_count} items</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

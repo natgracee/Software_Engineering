@@ -41,6 +41,20 @@ export const authService = {
         }
     },
 
+    // update profile picture
+    async updateProfilePhoto(formData) {
+        try {
+            const response = await api.put('/auth/profile/photo', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
     // delete user account
     async deleteAccount() {
         try {

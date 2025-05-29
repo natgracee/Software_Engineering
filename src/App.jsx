@@ -17,6 +17,9 @@ import { Scannedbill } from "./pages/Scannedbill";
 import { Splitbill } from "./pages/Splitbill";
 import { SplitDetail } from "./pages/Splitdetail";
 import { UserProvider } from "./context/UserContext";
+import { SummaryView } from './pages/SummaryView';
+import { InvoiceView } from './pages/InvoiceView';
+import { BillDetail } from './pages/BillDetail';
 // import { GoogleOAuthProvider } from "@react-oauth/google";
 
 function App() {
@@ -40,6 +43,9 @@ function App() {
             <Route path="/scannedbill" element={<Scannedbill />} />
             <Route path="/splitbill/:groupId" element={<Splitbill />} />
             <Route path="/splitdetail" element={<SplitDetail />} />
+            <Route path="/summary/:id" element={<SummaryView />} />
+            <Route path="/invoices/:id" element={<InvoiceView />} />
+            <Route path="/bill/:billId" element={<BillDetail />} />
             <Route path="*" element={<Notfound />} /> 
           </Routes>
         </BrowserRouter>

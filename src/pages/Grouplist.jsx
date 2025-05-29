@@ -9,7 +9,7 @@ const GroupItem = ({ group }) => {
 
   return (
     <div
-      onClick={() => navigate(`/groupdetail/${group.group_id}`)}
+      onClick={() => navigate(`/group/${group.group_id}`)}
       className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100"
     >
       <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center overflow-hidden">
