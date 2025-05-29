@@ -20,6 +20,7 @@ import { UserProvider } from "./context/UserContext";
 import { SummaryView } from './pages/SummaryView';
 import { InvoiceView } from './pages/InvoiceView';
 import { BillDetail } from './pages/BillDetail';
+import { ManualBill } from './pages/ManualBill';
 // import { GoogleOAuthProvider } from "@react-oauth/google";
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
             <Route path="/quickscan" element={<Quickscan />} />
             <Route path="/galleryscan" element={<GalleryScan />} />
             <Route path="/scannedbill" element={<Scannedbill />} />
+            <Route path="/manualbill/:id" element={<ManualBill />} />
             <Route path="/splitbill/:groupId" element={<Splitbill />} />
             <Route path="/splitdetail" element={<SplitDetail />} />
             <Route path="/summary/:id" element={<SummaryView />} />

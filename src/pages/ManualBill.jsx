@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MdArrowBack, MdClear, MdAdd, MdDelete } from 'react-icons/md';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MdArrowBack, MdAdd, MdDelete } from 'react-icons/md';
 import Swal from 'sweetalert2';
 
 // Fungsi format harga ke ribuan IDR
@@ -9,10 +9,8 @@ function formatPrice(num) {
 }
 
 export const ManualBill = () => {
-  const location = useLocation();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const groupId = location.state?.groupId;
-
   const [billData, setBillData] = useState([]);
   const [tax, setTax] = useState(0); // dalam persen
   const [discount, setDiscount] = useState(0); // dalam persen
@@ -20,6 +18,14 @@ export const ManualBill = () => {
 
   function handleBack() {
     navigate(-1);
+  }
+
+  function handleAddItem() {
+    setBillData(prev => [...prev, { name: '', quantity: 1, price: 0 }]);
+  }
+
+  function handleDeleteItem(index) {
+    setBillData(prev => prev.filter((_, i) => i !== index));
   }
 
   function handleChangeItem(index, field, value) {
@@ -35,60 +41,47 @@ export const ManualBill = () => {
     });
   }
 
-  function handleAddItem() {
-    setBillData(prev => [
-      ...prev,
-      { name: '', quantity: 1, price: 0 }
-    ]);
-  }
-
-  function handleDeleteItem(index) {
-    setBillData(prev => prev.filter((_, i) => i !== index));
-  }
-
-  function handleClear() {
-    setBillData([]);
-    setTax(0);
-    setDiscount(0);
-    setAdditionalFee(0);
-  }
-
   const handleConfirm = () => {
     if (!billData || billData.length === 0 || !billData.every(item => 
         item.name.trim() !== '' && 
         item.quantity > 0 && 
-        item.price >= 0
+        item.price > 0
     )) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Cannot Split Bill',
-            text: 'Please add and validate bill items before splitting.',
-        });
-        return;
+      Swal.fire({
+        icon: 'warning',
+        title: 'Cannot Split Bill',
+        text: 'Please add and validate bill items before splitting.',
+      });
+      return;
     }
 
     // Prepare the items with calculated total nominal for Splitbill
     const itemsForSplit = billData.map(item => ({
-        name: item.name,
-        nominal: item.price * item.quantity,
-        quantity: item.quantity,
-        who_to_paid: []
+      name: item.name,
+      nominal: item.price * item.quantity,
+      quantity: item.quantity,
+      who_to_paid: []
     }));
 
-    navigate(`/splitbill/${groupId}`, {
+    navigate(`/splitbill/${id}`, {
       state: {
         billData: {
-          group_id: groupId,
+          group_id: id,
           items: itemsForSplit,
           tax: tax / 100,
           discount: discount / 100,
-          additionalFee: additionalFee
+          additionalFee: additionalFee,
+          bill_picture: null,
+          is_manual: true
         }
       }
     });
   };
 
+  // Hitung subtotal tanpa tax dan discount
   const subTotal = billData.reduce((acc, cur) => acc + (cur.price * cur.quantity), 0);
+
+  // Hitung nilai pajak, diskon, dan total akhir
   const taxAmount = (subTotal * tax) / 100;
   const discountAmount = (subTotal * discount) / 100;
   const finalTotal = subTotal + taxAmount + additionalFee - discountAmount;
@@ -101,20 +94,14 @@ export const ManualBill = () => {
           <MdArrowBack size={28} />
         </button>
         <h1 className="text-xl font-semibold text-center flex-grow">Manual Bill Entry</h1>
-        {billData.length > 0 && (
-          <button
-            onClick={handleClear}
-            className="p-1 ml-4 rounded hover:bg-gray-200 transition"
-            title="Clear all items"
-          >
-            <MdClear size={28} />
-          </button>
-        )}
       </div>
 
       {/* Description */}
       <div className="mb-6">
-        <h2 className="text-lg text-left font-semibold text-gray-800 mb-1">Enter item details below</h2>
+        <h2 className="text-lg text-left font-semibold text-gray-800 mb-1">Add Bill Items</h2>
+        <p className="text-sm text-left text-gray-600">
+          Enter the items from your bill manually
+        </p>
       </div>
 
       {/* Bill Data Table */}
@@ -125,7 +112,8 @@ export const ManualBill = () => {
               <th className="text-left px-3 py-2 w-16">Qty</th>
               <th className="text-left px-3 py-2">Item Name</th>
               <th className="text-right px-3 py-2 w-28">Price</th>
-              <th className="text-right px-3 py-2 w-28">Action</th>
+              <th className="text-right px-3 py-2 w-28">Total</th>
+              <th className="text-center px-3 py-2 w-12"></th>
             </tr>
           </thead>
           <tbody>
@@ -146,6 +134,7 @@ export const ManualBill = () => {
                     value={item.name}
                     onChange={e => handleChangeItem(idx, 'name', e.target.value)}
                     className="w-full rounded border border-gray-300 p-1"
+                    placeholder="Enter item name"
                   />
                 </td>
                 <td className="px-3 py-1">
@@ -155,37 +144,36 @@ export const ManualBill = () => {
                     value={item.price}
                     onChange={e => handleChangeItem(idx, 'price', e.target.value)}
                     className="w-full rounded border border-gray-300 p-1 text-right"
-                    placeholder="Price per unit"
                   />
                 </td>
+                <td className="px-3 py-1 text-right">
+                  {formatPrice(item.price * item.quantity)}
+                </td>
                 <td className="px-3 py-1 text-center">
-                  <button onClick={() => handleDeleteItem(idx)} className="text-red-500 hover:text-red-700">
+                  <button
+                    onClick={() => handleDeleteItem(idx)}
+                    className="text-red-500 hover:text-red-700"
+                  >
                     <MdDelete size={20} />
                   </button>
                 </td>
               </tr>
             ))}
-            <tr>
-              <td colSpan={4} className="px-3 py-2 text-center">
-                <button onClick={handleAddItem} className="text-green-600 hover:text-green-800 flex items-center justify-center w-full">
-                  <MdAdd size={24} />
-                  Add Item
-                </button>
-              </td>
-            </tr>
           </tbody>
 
           <tfoot>
             <tr className="border-t font-semibold">
               <td colSpan={3} className="text-right px-3 py-2">Subtotal</td>
               <td className="text-right px-3 py-2">{formatPrice(subTotal)}</td>
+              <td></td>
             </tr>
 
+            {/* Tax input */}
             <tr>
               <td colSpan={3} className="text-right px-3 py-2">
                 <label htmlFor="taxInput">Tax (%)</label>
               </td>
-              <td className="px-3 py-2 text-right">
+              <td className="text-right px-3 py-2">
                 <input
                   id="taxInput"
                   type="number"
@@ -196,13 +184,15 @@ export const ManualBill = () => {
                   className="w-20 rounded border border-gray-300 p-1 text-right"
                 />
               </td>
+              <td></td>
             </tr>
 
+            {/* Discount input */}
             <tr>
               <td colSpan={3} className="text-right px-3 py-2">
                 <label htmlFor="discountInput">Discount (%)</label>
               </td>
-              <td className="px-3 py-2 text-right">
+              <td className="text-right px-3 py-2">
                 <input
                   id="discountInput"
                   type="number"
@@ -213,13 +203,15 @@ export const ManualBill = () => {
                   className="w-20 rounded border border-gray-300 p-1 text-right"
                 />
               </td>
+              <td></td>
             </tr>
 
+            {/* Additional Fee input */}
             <tr>
               <td colSpan={3} className="text-right px-3 py-2">
                 <label htmlFor="additionalFeeInput">Additional Fee (IDR)</label>
               </td>
-              <td className="px-3 py-2 text-right">
+              <td className="text-right px-3 py-2">
                 <input
                   id="additionalFeeInput"
                   type="number"
@@ -229,14 +221,26 @@ export const ManualBill = () => {
                   className="w-28 rounded border border-gray-300 p-1 text-right"
                 />
               </td>
+              <td></td>
             </tr>
 
+            {/* Final total */}
             <tr className="border-t font-bold text-lg bg-gray-200">
               <td colSpan={3} className="text-right px-3 py-3">Total</td>
               <td className="text-right px-3 py-3">{formatPrice(finalTotal)}</td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
+
+        {/* Add Item Button */}
+        <button
+          onClick={handleAddItem}
+          className="mt-4 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center gap-2 transition-colors"
+        >
+          <MdAdd size={20} />
+          <span>Add Item</span>
+        </button>
       </div>
 
       {/* Action Buttons */}

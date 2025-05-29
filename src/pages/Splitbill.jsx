@@ -8,10 +8,12 @@ export const Splitbill = () => {
   const { groupId } = useParams();
   const location = useLocation();
 
-  const billItems = location.state?.billData || [];
-  const tax = location.state?.tax;
-  const discount = location.state?.discount;
-  const additionalFee = location.state?.additionalFee;
+  // Get bill data from location state, handling both manual and scanned bill structures
+  const billData = location.state?.billData;
+  const billItems = Array.isArray(billData) ? billData : billData?.items || [];
+  const tax = location.state?.tax || billData?.tax || 0;
+  const discount = location.state?.discount || billData?.discount || 0;
+  const additionalFee = location.state?.additionalFee || billData?.additionalFee || 0;
 
   const initialMembers = location.state?.members || [];
 
@@ -23,10 +25,12 @@ export const Splitbill = () => {
 
   const [assignments, setAssignments] = useState(() => {
     const init = {};
-    billItems.forEach(item => {
-      const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
-      init[itemId] = [];
-    });
+    if (Array.isArray(billItems)) {
+      billItems.forEach(item => {
+        const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
+        init[itemId] = [];
+      });
+    }
     return init;
   });
 
@@ -120,7 +124,7 @@ export const Splitbill = () => {
         return {
           name: item.name,
           quantity: item.quantity,
-          nominal: item.price,
+          nominal: item.nominal || item.price,
           who_to_paid: assignedMembers,
           paid_by: paidBy
         };
@@ -128,7 +132,7 @@ export const Splitbill = () => {
       tax: tax || 0,
       service: additionalFee || 0,
       discount: discount || 0,
-      bill_picture: location.state?.bill_picture // Add bill picture from state
+      bill_picture: location.state?.bill_picture 
     };
 
     console.log('Passing to SplitDetail:', formattedBill);
@@ -239,7 +243,7 @@ export const Splitbill = () => {
                 }}
               >
                 <div className="font-semibold">
-                  {item.quantity}x {item.name} - {formatRupiah(item.price)}
+                  {item.quantity}x {item.name} - {formatRupiah(item.nominal || item.price)}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {assignedMembers.length === 0 && (
@@ -266,7 +270,7 @@ export const Splitbill = () => {
               {tax !== undefined && (
                 <div className="flex justify-between">
                   <span>Tax ({(tax * 100).toFixed(2)}%)</span>
-                  <span>{formatRupiah(billItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * tax)}</span>
+                  <span>{formatRupiah(billItems.reduce((sum, i) => sum + (i.nominal || i.price) * i.quantity, 0) * tax)}</span>
                 </div>
               )}
               {discount !== undefined && (
