@@ -87,151 +87,154 @@ export const ManualBill = () => {
   const finalTotal = subTotal + taxAmount + additionalFee - discountAmount;
 
   return (
-    <div className="p-4 font-sans min-h-screen flex flex-col relative">
-      {/* Header */}
-      <div className="flex items-center mb-6">
+    <div className="min-h-screen flex flex-col font-sans">
+      {/* Header - Fixed */}
+      <div className="flex items-center p-4 bg-white border-b">
         <button onClick={handleBack} className="p-1 mr-4 rounded hover:bg-gray-200 transition">
           <MdArrowBack size={28} />
         </button>
         <h1 className="text-xl font-semibold text-center flex-grow">Manual Bill Entry</h1>
       </div>
 
-      {/* Description */}
-      <div className="mb-6">
-        <h2 className="text-lg text-left font-semibold text-gray-800 mb-1">Add Bill Items</h2>
-        <p className="text-sm text-left text-gray-600">
-          Enter the items from your bill manually
-        </p>
-      </div>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 pb-32">
+        {/* Description */}
+        <div className="mb-6">
+          <h2 className="text-lg text-left font-semibold text-gray-800 mb-1">Add Bill Items</h2>
+          <p className="text-sm text-left text-gray-600">
+            Enter the items from your bill manually
+          </p>
+        </div>
 
-      {/* Bill Data Table */}
-      <div className="flex-grow overflow-auto mb-24">
-        <table className="w-full bg-gray-50 rounded text-sm font-mono">
-          <thead>
-            <tr className="border-b border-gray-300">
-              <th className="text-left px-3 py-2 w-16">Qty</th>
-              <th className="text-left px-3 py-2">Item Name</th>
-              <th className="text-right px-3 py-2 w-28">Price</th>
-              <th className="text-right px-3 py-2 w-28">Total</th>
-              <th className="text-center px-3 py-2 w-12"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {billData.map((item, idx) => (
-              <tr key={idx} className="border-b border-gray-200">
-                <td className="px-3 py-1">
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={e => handleChangeItem(idx, 'quantity', e.target.value)}
-                    className="w-full rounded border border-gray-300 p-1 text-right"
-                  />
+        {/* Bill Data Table */}
+        <div className="overflow-x-auto bg-gray-50 rounded shadow-sm mb-4">
+          <table className="w-full text-sm font-mono">
+            <thead>
+              <tr className="border-b border-gray-300">
+                <th className="text-left px-3 py-2 w-16 min-w-[64px]">Qty</th>
+                <th className="text-left px-3 py-2 min-w-[150px]">Item Name</th>
+                <th className="text-right px-3 py-2 w-28 min-w-[112px]">Price</th>
+                <th className="text-right px-3 py-2 w-28 min-w-[112px]">Total</th>
+                <th className="text-center px-3 py-2 w-12 min-w-[48px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {billData.map((item, idx) => (
+                <tr key={idx} className="border-b border-gray-200">
+                  <td className="px-3 py-1">
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={e => handleChangeItem(idx, 'quantity', e.target.value)}
+                      className="w-full rounded border border-gray-300 p-1 text-right"
+                    />
+                  </td>
+                  <td className="px-3 py-1">
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={e => handleChangeItem(idx, 'name', e.target.value)}
+                      className="w-full rounded border border-gray-300 p-1"
+                      placeholder="Enter item name"
+                    />
+                  </td>
+                  <td className="px-3 py-1">
+                    <input
+                      type="number"
+                      min={0}
+                      value={item.price}
+                      onChange={e => handleChangeItem(idx, 'price', e.target.value)}
+                      className="w-full rounded border border-gray-300 p-1 text-right"
+                    />
+                  </td>
+                  <td className="px-3 py-1 text-right">
+                    {formatPrice(item.price * item.quantity)}
+                  </td>
+                  <td className="px-3 py-1 text-center">
+                    <button
+                      onClick={() => handleDeleteItem(idx)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <MdDelete size={20} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+
+            <tfoot>
+              <tr className="border-t font-semibold">
+                <td colSpan={3} className="text-right px-3 py-2">Subtotal</td>
+                <td className="text-right px-3 py-2">{formatPrice(subTotal)}</td>
+                <td></td>
+              </tr>
+
+              {/* Tax input */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">
+                  <label htmlFor="taxInput">Tax (%)</label>
                 </td>
-                <td className="px-3 py-1">
+                <td className="text-right px-3 py-2">
                   <input
-                    type="text"
-                    value={item.name}
-                    onChange={e => handleChangeItem(idx, 'name', e.target.value)}
-                    className="w-full rounded border border-gray-300 p-1"
-                    placeholder="Enter item name"
-                  />
-                </td>
-                <td className="px-3 py-1">
-                  <input
+                    id="taxInput"
                     type="number"
                     min={0}
-                    value={item.price}
-                    onChange={e => handleChangeItem(idx, 'price', e.target.value)}
-                    className="w-full rounded border border-gray-300 p-1 text-right"
+                    max={100}
+                    value={tax}
+                    onChange={e => setTax(Number(e.target.value))}
+                    className="w-20 rounded border border-gray-300 p-1 text-right"
                   />
                 </td>
-                <td className="px-3 py-1 text-right">
-                  {formatPrice(item.price * item.quantity)}
-                </td>
-                <td className="px-3 py-1 text-center">
-                  <button
-                    onClick={() => handleDeleteItem(idx)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <MdDelete size={20} />
-                  </button>
-                </td>
+                <td></td>
               </tr>
-            ))}
-          </tbody>
 
-          <tfoot>
-            <tr className="border-t font-semibold">
-              <td colSpan={3} className="text-right px-3 py-2">Subtotal</td>
-              <td className="text-right px-3 py-2">{formatPrice(subTotal)}</td>
-              <td></td>
-            </tr>
+              {/* Discount input */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">
+                  <label htmlFor="discountInput">Discount (%)</label>
+                </td>
+                <td className="text-right px-3 py-2">
+                  <input
+                    id="discountInput"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={discount}
+                    onChange={e => setDiscount(Number(e.target.value))}
+                    className="w-20 rounded border border-gray-300 p-1 text-right"
+                  />
+                </td>
+                <td></td>
+              </tr>
 
-            {/* Tax input */}
-            <tr>
-              <td colSpan={3} className="text-right px-3 py-2">
-                <label htmlFor="taxInput">Tax (%)</label>
-              </td>
-              <td className="text-right px-3 py-2">
-                <input
-                  id="taxInput"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={tax}
-                  onChange={e => setTax(Number(e.target.value))}
-                  className="w-20 rounded border border-gray-300 p-1 text-right"
-                />
-              </td>
-              <td></td>
-            </tr>
+              {/* Additional Fee input */}
+              <tr>
+                <td colSpan={3} className="text-right px-3 py-2">
+                  <label htmlFor="additionalFeeInput">Additional Fee (IDR)</label>
+                </td>
+                <td className="text-right px-3 py-2">
+                  <input
+                    id="additionalFeeInput"
+                    type="number"
+                    min={0}
+                    value={additionalFee}
+                    onChange={e => setAdditionalFee(Number(e.target.value))}
+                    className="w-28 rounded border border-gray-300 p-1 text-right"
+                  />
+                </td>
+                <td></td>
+              </tr>
 
-            {/* Discount input */}
-            <tr>
-              <td colSpan={3} className="text-right px-3 py-2">
-                <label htmlFor="discountInput">Discount (%)</label>
-              </td>
-              <td className="text-right px-3 py-2">
-                <input
-                  id="discountInput"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={discount}
-                  onChange={e => setDiscount(Number(e.target.value))}
-                  className="w-20 rounded border border-gray-300 p-1 text-right"
-                />
-              </td>
-              <td></td>
-            </tr>
-
-            {/* Additional Fee input */}
-            <tr>
-              <td colSpan={3} className="text-right px-3 py-2">
-                <label htmlFor="additionalFeeInput">Additional Fee (IDR)</label>
-              </td>
-              <td className="text-right px-3 py-2">
-                <input
-                  id="additionalFeeInput"
-                  type="number"
-                  min={0}
-                  value={additionalFee}
-                  onChange={e => setAdditionalFee(Number(e.target.value))}
-                  className="w-28 rounded border border-gray-300 p-1 text-right"
-                />
-              </td>
-              <td></td>
-            </tr>
-
-            {/* Final total */}
-            <tr className="border-t font-bold text-lg bg-gray-200">
-              <td colSpan={3} className="text-right px-3 py-3">Total</td>
-              <td className="text-right px-3 py-3">{formatPrice(finalTotal)}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
+              {/* Final total */}
+              <tr className="border-t font-bold text-lg bg-gray-200">
+                <td colSpan={3} className="text-right px-3 py-3">Total</td>
+                <td className="text-right px-3 py-3">{formatPrice(finalTotal)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
 
         {/* Add Item Button */}
         <button
@@ -243,11 +246,11 @@ export const ManualBill = () => {
         </button>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - Fixed */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
         <button
           onClick={handleConfirm}
-          className="w-full green-button font-semibold py-2 rounded"
+          className="w-full green-button font-semibold py-3 rounded-lg shadow-sm transition"
         >
           Split Bill
         </button>

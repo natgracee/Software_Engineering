@@ -1,4 +1,4 @@
-import { MdArrowBack, MdEdit } from 'react-icons/md';
+import { MdArrowBack, MdEdit, MdClose } from 'react-icons/md';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
@@ -114,17 +114,19 @@ export const Account = () => {
   }
 
   return (
-    <section className="min-h-screen bg-gray-50">
+    <section className="min-h-screen bg-gradient-to-br from-green-50 via-green-100 to-green-50">
+      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      
       {/* Header */}
-      <div className="bg-white shadow-sm">
+      <div className="bg-white/80 backdrop-blur-sm shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center">
           <button
             onClick={() => window.history.back()}
-            className="text-gray-700 hover:text-gray-900"
+            className="text-gray-700 hover:text-green-700 transition-colors"
           >
             <MdArrowBack size={24} />
           </button>
-          <h1 className="text-xl font-semibold text-center flex-1">Profile</h1>
+          <h1 className="text-xl font-semibold text-center flex-1 text-gray-800">Profile</h1>
         </div>
       </div>
 
@@ -140,11 +142,11 @@ export const Account = () => {
       {/* Main Content */}
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* Profile Section */}
-        <div className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm p-6 space-y-6">
           {/* Profile Picture */}
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
-              <div className="w-32 h-32 bg-gray-100 rounded-full overflow-hidden border-4 border-white shadow-md">
+              <div className="w-32 h-32 bg-green-50 rounded-full overflow-hidden border-4 border-white shadow-md">
                 {profilePic ? (
                   <img
                     src={profilePic}
@@ -152,15 +154,15 @@ export const Account = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <span className="text-5xl text-gray-400">{username?.charAt(0).toUpperCase()}</span>
+                  <div className="w-full h-full flex items-center justify-center bg-green-50">
+                    <span className="text-5xl text-green-400">{username?.charAt(0).toUpperCase()}</span>
                   </div>
                 )}
               </div>
               {isEditing && !isProfilePicEditing && (
                 <button
                   onClick={() => setIsProfilePicEditing(true)}
-                  className="absolute bottom-0 right-0 bg-gray-600 text-white p-2 rounded-full shadow-lg hover:bg-gray-700 transition"
+                  className="absolute bottom-0 right-0 bg-green-600 text-white p-2 rounded-full shadow-lg hover:bg-green-700 transition"
                 >
                   <MdEdit size={20} />
                 </button>
@@ -175,13 +177,13 @@ export const Account = () => {
             <div>
               <label className="text-sm font-medium text-gray-500 block mb-1">Username</label>
               {!isEditing ? (
-                <p className="text-base text-gray-800 bg-gray-50 p-3 rounded-lg">{username}</p>
+                <p className="text-base text-gray-800 bg-green-50 p-3 rounded-lg">{username}</p>
               ) : (
                 <input
                   type="text"
                   value={newUsername || username}
                   onChange={(e) => setNewUsername(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   placeholder="Enter new username"
                 />
               )}
@@ -191,13 +193,13 @@ export const Account = () => {
             <div>
               <label className="text-sm font-medium text-gray-500 block mb-1">Email</label>
               {!isEditing ? (
-                <p className="text-base text-gray-800 bg-gray-50 p-3 rounded-lg">{email}</p>
+                <p className="text-base text-gray-800 bg-green-50 p-3 rounded-lg">{email}</p>
               ) : (
                 <input
                   type="email"
                   value={newEmail || email}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   placeholder="Enter new email"
                 />
               )}
@@ -209,14 +211,14 @@ export const Account = () => {
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="w-full bg-blue-500 text-white p-3 rounded-lg shadow-sm hover:bg-blue-600 transition font-medium"
+                className="w-full bg-green-600 text-white p-3 rounded-lg shadow-sm hover:bg-green-700 transition font-medium"
               >
                 Edit Profile
               </button>
             ) : (
               <button
                 onClick={handleConfirmEdit}
-                className="w-full bg-green-500 text-white p-3 rounded-lg shadow-sm hover:bg-green-600 transition font-medium"
+                className="w-full bg-green-600 text-white p-3 rounded-lg shadow-sm hover:bg-green-700 transition font-medium"
               >
                 Save Changes
               </button>
@@ -228,7 +230,7 @@ export const Account = () => {
         <div className="mt-6 space-y-3">
           <button
             onClick={handleLogout}
-            className="w-full bg-gray-100 text-gray-700 p-3 rounded-lg shadow-sm hover:bg-gray-200 transition font-medium"
+            className="w-full bg-white text-gray-700 p-3 rounded-lg shadow-sm hover:bg-gray-50 transition font-medium border border-gray-200"
           >
             Logout
           </button>
@@ -243,26 +245,59 @@ export const Account = () => {
 
       {/* Profile Picture Edit Modal */}
       {isProfilePicEditing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-96 space-y-4">
-            <h2 className="text-xl font-semibold text-gray-800">Change Profile Picture</h2>
-            <div className="space-y-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleProfilePicChange}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-              />
-              <div className="flex space-x-3">
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <MdEdit className="text-green-500" size={24} />
+                Change Profile Picture
+              </h2>
+              <button
+                onClick={() => setIsProfilePicEditing(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <MdClose size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePicChange}
+                  className="hidden"
+                  id="profile-pic-input"
+                />
+                <label
+                  htmlFor="profile-pic-input"
+                  className="cursor-pointer block"
+                >
+                  <div className="space-y-2">
+                    <div className="mx-auto w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
+                      <MdEdit className="text-green-500" size={24} />
+                    </div>
+                    <div className="text-gray-600">
+                      <p className="font-medium">Click to upload</p>
+                      <p className="text-sm">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      PNG, JPG up to 5MB
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setIsProfilePicEditing(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition"
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => setIsProfilePicEditing(false)}
-                  className="flex-1 bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Save
                 </button>

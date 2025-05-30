@@ -48,9 +48,11 @@ export const Splitbill = () => {
         setLoading(true);
         setError(null);
         const groupData = await authService.getGroupById(groupId);
+        console.log('Fetched group data:', groupData);
         const transformedMembers = groupData.members.map(member => ({
           id: member.id,
-          name: member.username
+          name: member.username,
+          profile_picture: member.profile_picture
         }));
         setMembersData(transformedMembers);
       } catch (err) {
@@ -153,146 +155,165 @@ export const Splitbill = () => {
   };
 
   return (
-    <div className="px-4 py-6 pb-24">
-      <div className="flex items-center justify-between mb-6 relative">
-        <button onClick={() => window.history.back()} className="text-gray-700 absolute left-0" aria-label="Back">
+    <div className="min-h-screen flex flex-col">
+      {/* Header - Fixed */}
+      <div className="flex items-center justify-between p-4 bg-white border-b">
+        <button onClick={() => window.history.back()} className="text-gray-700" aria-label="Back">
           <MdArrowBack size={28} />
         </button>
-        <h1 className="text-xl font-semibold text-center w-full">Your Bills</h1>
+        <h1 className="text-xl font-semibold text-center flex-1">Your Bills</h1>
       </div>
 
-      <div className="mb-4">
-        <h2 className="text-lg text-left font-semibold text-gray-800">Select Member</h2>
-        <p className="text-sm text-left text-gray-600 mb-4">
-          Pilih anggota lalu klik makanan yang dibeli anggota tersebut.
-        </p>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 pb-32">
+        <div className="mb-4">
+          <h2 className="text-lg text-left font-semibold text-gray-800">Select Member</h2>
+          <p className="text-sm text-left text-gray-600 mb-4">
+            Pilih anggota lalu klik makanan yang dibeli anggota tersebut.
+          </p>
 
-        {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
+          {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
 
-        {loading ? (
-          <div className="text-center py-4">Loading members...</div>
-        ) : (
-          <div className="flex justify-between items-center gap-6 mb-6 mt-10">
-            <div className="flex gap-6">
-              {membersData.map(member => {
-                const selected = selectedMember === member.id;
-                return (
-                  <button
-                    key={member.id}
-                    onClick={() => toggleSelectedMember(member.id)}
-                    className="flex flex-col items-center cursor-pointer focus:outline-none"
-                    type="button"
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-base
-                        ${selected ? 'ring-2 ring-pink-800 bg-pink-300' : 'bg-pink-600 hover:bg-pink-300'}`}
-                    >
-                      {member.name[0].toUpperCase()}
-                    </div>
-                    <span className="mt-1 text-xs text-gray-700">{member.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={splitEqually}
-              className="flex flex-col items-center cursor-pointer focus:outline-none"
-              type="button"
-            >
-              <div className="w-10 h-10 rounded-full bg-green-400 flex items-center justify-center text-white text-lg shadow-md hover:bg-green-700 transition">
-                <FaPercent />
-              </div>
-              <span className="mt-1 text-xs text-black bg-opacity-40 px-2 rounded">
-                Split Equally
-              </span>
-            </button>
-          </div>
-        )}
-
-        {/* Global Paid By Selection */}
-        <div className="mb-4 p-4 bg-white rounded shadow">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Who paid for this bill?</label>
-          <select
-            className="w-full p-2 border rounded"
-            value={paidBy || ''}
-            onChange={(e) => setpaidBy(e.target.value)}
-          >
-            <option value="">Select who paid</option>
-            {membersData.map(member => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="bg-gray-100 p-4 rounded shadow min-h-[150px] font-mono text-sm whitespace-pre-wrap">
-          {billItems.map((item) => {
-            const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
-            const assignedMembers = assignments[itemId] || [];
-            return (
-              <div
-                key={itemId}
-                className="mb-4 border-b border-gray-300 pb-2 cursor-pointer select-none"
-                onClick={() => toggleAssignItemToMember(item)}
-                role="button"
-                tabIndex={0}
-                onKeyPress={e => {
-                  if (e.key === 'Enter' || e.key === ' ') toggleAssignItemToMember(item);
-                }}
-              >
-                <div className="font-semibold">
-                  {item.quantity}x {item.name} - {formatRupiah(item.nominal || item.price)}
-                </div>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {assignedMembers.length === 0 && (
-                    <span className="text-xs italic text-gray-400">Belum diassign</span>
-                  )}
-                  {assignedMembers.map(memberId => {
-                    const member = membersData.find(m => m.id === memberId);
-                    return member ? (
-                      <span
-                        key={memberId}
-                        className="text-xs bg-pink-300 px-2 py-0.5 rounded-full"
+          {loading ? (
+            <div className="text-center py-4">Loading members...</div>
+          ) : (
+            <div className="mb-6 mt-10">
+              <div className="flex items-center gap-6 overflow-x-auto pb-4 px-1 -mx-1">
+                <div className="flex gap-6 min-w-max">
+                  {membersData.map(member => {
+                    const selected = selectedMember === member.id;
+                    return (
+                      <button
+                        key={member.id}
+                        onClick={() => toggleSelectedMember(member.id)}
+                        className="flex flex-col items-center cursor-pointer focus:outline-none"
+                        type="button"
                       >
-                        {member.name}
-                      </span>
-                    ) : null;
+                        <div
+                          className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-base overflow-hidden
+                            ${selected ? 'ring-2 ring-pink-800 bg-pink-300' : 'bg-pink-600 hover:bg-pink-300'}`}
+                        >
+                          {member.profile_picture ? (
+                            <img 
+                              src={`http://localhost:5000/uploads/profile-photos/${member.profile_picture}`}
+                              alt={member.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            member.name[0].toUpperCase()
+                          )}
+                        </div>
+                        <span className="mt-2 text-xs text-gray-700 max-w-[80px] truncate">{member.name}</span>
+                      </button>
+                    );
                   })}
                 </div>
-              </div>
-            );
-          })}
 
-          {(tax !== undefined || discount !== undefined || additionalFee !== undefined) && (
-            <div className="mt-6 border-t border-gray-400 pt-4 space-y-2 text-sm text-gray-800">
-              {tax !== undefined && (
-                <div className="flex justify-between">
-                  <span>Tax ({(tax * 100).toFixed(2)}%)</span>
-                  <span>{formatRupiah(billItems.reduce((sum, i) => sum + (i.nominal || i.price) * i.quantity, 0) * tax)}</span>
-                </div>
-              )}
-              {discount !== undefined && (
-                <div className="flex justify-between">
-                  <span>Discount</span>
-                  <span>- {formatRupiah(discount)}</span>
-                </div>
-              )}
-              {additionalFee !== undefined && (
-                <div className="flex justify-between">
-                  <span>Additional Fee</span>
-                  <span>{formatRupiah(additionalFee)}</span>
+                <button
+                  onClick={splitEqually}
+                  className="flex flex-col items-center cursor-pointer focus:outline-none"
+                  type="button"
+                >
+                  <div className="w-14 h-14 rounded-full bg-green-400 flex items-center justify-center text-white text-lg shadow-md hover:bg-green-700 transition">
+                    <FaPercent />
+                  </div>
+                  <span className="mt-2 text-xs text-black bg-opacity-40 px-2 rounded">
+                    Split Equally
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Global Paid By Selection */}
+          <div className="mb-4 p-4 bg-white rounded-lg shadow-sm">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Who paid for this bill?</label>
+            <select
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              value={paidBy || ''}
+              onChange={(e) => setpaidBy(e.target.value)}
+            >
+              <option value="">Select who paid</option>
+              {membersData.map(member => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Bill Items */}
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Bill Items</h3>
+            <div className="space-y-4 h-64 overflow-y-auto">
+              {billItems.map((item) => {
+                const itemId = item.id !== undefined ? item.id : JSON.stringify(item);
+                const assignedMembers = assignments[itemId] || [];
+                return (
+                  <div
+                    key={itemId}
+                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer select-none"
+                    onClick={() => toggleAssignItemToMember(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyPress={e => {
+                      if (e.key === 'Enter' || e.key === ' ') toggleAssignItemToMember(item);
+                    }}
+                  >
+                    <div className="font-semibold text-gray-800">
+                      {item.quantity}x {item.name} - {formatRupiah(item.nominal || item.price)}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {assignedMembers.length === 0 && (
+                        <span className="text-xs italic text-gray-400">Belum diassign</span>
+                      )}
+                      {assignedMembers.map(memberId => {
+                        const member = membersData.find(m => m.id === memberId);
+                        return member ? (
+                          <span
+                            key={memberId}
+                            className="text-xs bg-pink-300 px-2 py-0.5 rounded-full"
+                          >
+                            {member.name}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {(tax !== undefined || discount !== undefined || additionalFee !== undefined) && (
+                <div className="mt-6 border-t border-gray-200 pt-4 space-y-2 text-sm text-gray-800">
+                  {tax !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Tax ({(tax * 100).toFixed(2)}%)</span>
+                      <span>{formatRupiah(billItems.reduce((sum, i) => sum + (i.nominal || i.price) * i.quantity, 0) * tax)}</span>
+                    </div>
+                  )}
+                  {discount !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Discount</span>
+                      <span>- {formatRupiah(discount)}</span>
+                    </div>
+                  )}
+                  {additionalFee !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Additional Fee</span>
+                      <span>{formatRupiah(additionalFee)}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      <div className="fixed bottom-4 left-0 right-0 flex justify-center px-4">
+      {/* Fixed Bottom Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
         <button
-          className="max-w-md w-full green-button font-semibold py-3 rounded shadow transition"
+          className="w-full green-button font-semibold py-3 rounded-lg shadow-sm transition"
           onClick={handleConfirm}
           type="button"
         >
