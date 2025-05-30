@@ -21,6 +21,9 @@ import { SummaryView } from './pages/SummaryView';
 import { InvoiceView } from './pages/InvoiceView';
 import { BillDetail } from './pages/BillDetail';
 import { ManualBill } from './pages/ManualBill';
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from './pages/ResetPassword';
+// import { CompleteGoogleSignup } from './pages/CompleteGoogleSignup';
 // import { GoogleOAuthProvider } from "@react-oauth/google";
 
 function App() {
@@ -31,6 +34,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            {/* <Route path="/completegooglesignup" element={<CompleteGoogleSignup />} /> */}
             <Route path="/main" element={<Main />} />
             <Route path="/notification" element={<Notification />} />
             <Route path="/account" element={<Account />} />
@@ -48,6 +52,8 @@ function App() {
             <Route path="/summary/:id" element={<SummaryView />} />
             <Route path="/invoices/:id" element={<InvoiceView />} />
             <Route path="/bill/:billId" element={<BillDetail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<Notfound />} /> 
           </Routes>
         </BrowserRouter>

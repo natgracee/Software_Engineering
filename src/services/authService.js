@@ -1,4 +1,6 @@
 import api from '../config/api';
+import axios from 'axios';
+import { API_ENDPOINTS } from '../config/api';
 
 export const authService = {
     // login function
@@ -119,6 +121,38 @@ export const authService = {
     async joinGroup(groupId) {
         try {
             const response = await api.post(`/auth/groups/${groupId}/join`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    completeGoogleSignup: async (userData) => {
+        try {
+            const response = await axios.post(API_ENDPOINTS.AUTH.COMPLETE_GOOGLE_SIGNUP, userData);
+            return response.data;
+        } catch (error) {
+            throw new Error(error.response?.data?.message || 'Failed to complete Google sign-up');
+        }
+    },
+
+    // forgot password
+    async forgotPassword(email) {
+        try {
+            const response = await api.post('/auth/forgot-password', { email });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    // reset password
+    async resetPassword(token, newPassword) {
+        try {
+            const response = await api.post('/auth/reset-password', {
+                token,
+                newPassword
+            });
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;

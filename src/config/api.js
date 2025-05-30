@@ -9,7 +9,8 @@ export const API_ENDPOINTS = {
     REGISTER: `${API_URL}/auth/register`,
     PROFILE: `${API_URL}/auth/profile`,
     GOOGLE: `${API_URL}/auth/google`,
-    GOOGLE_CALLBACK: `${API_URL}/auth/google/callback`
+    GOOGLE_CALLBACK: `${API_URL}/auth/google/callback`,
+    COMPLETE_GOOGLE_SIGNUP: `${API_URL}/auth/complete-google-signup`
   },
   GROUPS: {
     LIST: `${API_URL}/auth/groups`,
