@@ -37,7 +37,7 @@ export const SplitDetail = () => {
   const subtotal = billItems.reduce((sum, item) => {
     const itemPrice = Number(item.nominal) || 0;
     const itemQuantity = Number(item.quantity) || 1;
-    return sum + (itemPrice * itemQuantity);
+    return sum + (itemPrice);
   }, 0);
 
   // Get the payer's name from the first item's paid_by
