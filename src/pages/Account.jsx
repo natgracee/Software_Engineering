@@ -5,7 +5,7 @@ import { authService } from '../services/authService';
 import { useUser } from '../context/UserContext';
 
 export const Account = () => {
-  const { user, updateUser } = useUser();
+  const { user, updateUser, logout } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -68,6 +68,17 @@ export const Account = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      logout(); // Clear user context
+      navigate('/login');
+    } catch (err) {
+      setError('Failed to logout');
+      console.error('Logout error:', err);
+    }
+  };
+
   const handleProfilePicChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -103,133 +114,160 @@ export const Account = () => {
   }
 
   return (
-    <section className="px-4 py-6 min-h-screen flex items-center justify-center">
+    <section className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="absolute left-0 top-6 flex items-center justify-between w-full mb-6 px-4">
-        <button
-          onClick={() => window.history.back()}
-          className="text-gray-700"
-        >
-          <MdArrowBack size={24} />
-        </button>
-        <h1 className="text-xl font-semibold text-center w-full">Profile</h1>
+      <div className="bg-white shadow-sm">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center">
+          <button
+            onClick={() => window.history.back()}
+            className="text-gray-700 hover:text-gray-900"
+          >
+            <MdArrowBack size={24} />
+          </button>
+          <h1 className="text-xl font-semibold text-center flex-1">Profile</h1>
+        </div>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-full px-4">
+        <div className="max-w-2xl mx-auto px-4 mt-4">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
         </div>
       )}
 
-      {/* Profile Section */}
-      <div className="bg-gray-200 p-6 rounded-lg shadow-sm space-y-4 max-w-md w-full">
-        {/* Foto Profil */}
-        <div className="relative flex justify-center group">
-          <div className="w-24 h-24 bg-gray-300 rounded-full overflow-hidden">
-            {profilePic ? (
-              <img
-                src={profilePic}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                <span className="text-4xl text-gray-400">{username?.charAt(0).toUpperCase()}</span>
+      {/* Main Content */}
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        {/* Profile Section */}
+        <div className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+          {/* Profile Picture */}
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative">
+              <div className="w-32 h-32 bg-gray-100 rounded-full overflow-hidden border-4 border-white shadow-md">
+                {profilePic ? (
+                  <img
+                    src={profilePic}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    <span className="text-5xl text-gray-400">{username?.charAt(0).toUpperCase()}</span>
+                  </div>
+                )}
               </div>
-            )}
+              {isEditing && !isProfilePicEditing && (
+                <button
+                  onClick={() => setIsProfilePicEditing(true)}
+                  className="absolute bottom-0 right-0 bg-gray-600 text-white p-2 rounded-full shadow-lg hover:bg-gray-700 transition"
+                >
+                  <MdEdit size={20} />
+                </button>
+              )}
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-800">{username}</h2>
           </div>
 
-          {/* Tombol Edit Profil Pic */}
-          {isEditing && !isProfilePicEditing && (
-            <button
-              onClick={() => setIsProfilePicEditing(true)}
-              className="absolute bottom-0 translate-x-1/2 translate-y-1/2 bg-gray-500 text-white p-2 rounded-full"
-            >
-              <MdEdit size={16} />
-            </button>
-          )}
+          {/* Profile Information */}
+          <div className="space-y-4">
+            {/* Username */}
+            <div>
+              <label className="text-sm font-medium text-gray-500 block mb-1">Username</label>
+              {!isEditing ? (
+                <p className="text-base text-gray-800 bg-gray-50 p-3 rounded-lg">{username}</p>
+              ) : (
+                <input
+                  type="text"
+                  value={newUsername || username}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter new username"
+                />
+              )}
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="text-sm font-medium text-gray-500 block mb-1">Email</label>
+              {!isEditing ? (
+                <p className="text-base text-gray-800 bg-gray-50 p-3 rounded-lg">{email}</p>
+              ) : (
+                <input
+                  type="email"
+                  value={newEmail || email}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter new email"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="w-full bg-blue-500 text-white p-3 rounded-lg shadow-sm hover:bg-blue-600 transition font-medium"
+              >
+                Edit Profile
+              </button>
+            ) : (
+              <button
+                onClick={handleConfirmEdit}
+                className="w-full bg-green-500 text-white p-3 rounded-lg shadow-sm hover:bg-green-600 transition font-medium"
+              >
+                Save Changes
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Username */}
-        <div>
-          <label className="text-sm font-medium text-gray-500 block mb-1 text-left">Username</label>
-          {!isEditing ? (
-            <p className="text-base font-medium text-gray-800 text-left">{username}</p>
-          ) : (
-            <input
-              type="text"
-              value={newUsername || username}
-              onChange={(e) => setNewUsername(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-            />
-          )}
-        </div>
-
-        {/* Email */}
-        <div>
-          <label className="text-sm font-medium text-gray-500 block mb-1 text-left">Email</label>
-          {!isEditing ? (
-            <p className="text-base font-medium text-gray-800 text-left">{email}</p>
-          ) : (
-            <input
-              type="email"
-              value={newEmail || email}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
-            />
-          )}
-        </div>
-
-        {/* Edit / Confirm Button */}
-        <div>
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="green-button rounded-lg w-full shadow-md transition"
-            >
-              Edit Profile
-            </button>
-          ) : (
-            <button
-              onClick={handleConfirmEdit}
-              className="bg-blue-500 text-white p-3 rounded-lg w-full shadow-md hover:bg-blue-600 transition"
-            >
-              Confirm Changes
-            </button>
-          )}
+        {/* Account Actions */}
+        <div className="mt-6 space-y-3">
+          <button
+            onClick={handleLogout}
+            className="w-full bg-gray-100 text-gray-700 p-3 rounded-lg shadow-sm hover:bg-gray-200 transition font-medium"
+          >
+            Logout
+          </button>
+          <button
+            onClick={handleDeleteAccount}
+            className="w-full bg-red-500 text-white p-3 rounded-lg shadow-sm hover:bg-red-600 transition font-medium"
+          >
+            Delete Account
+          </button>
         </div>
       </div>
 
-      {/* Delete Account Button */}
-      <div className="absolute text-sm bottom-50 left-1/2 transform -translate-x-1/2 w-full px-4">
-        <button
-          onClick={handleDeleteAccount}
-          className="red-button rounded-lg shadow-md transition"
-        >
-          Delete Account
-        </button>
-      </div>
-
-      {/* Modal / Gallery Access */}
+      {/* Profile Picture Edit Modal */}
       {isProfilePicEditing && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96 space-y-4">
-            <h2 className="text-xl font-semibold">Change Profile Picture</h2>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleProfilePicChange}
-              className="mt-2 w-full"
-            />
-            <button
-              onClick={() => setIsProfilePicEditing(false)}
-              className="mt-4 green-button text-white p-2 rounded-lg w-full"
-            >
-              Save Changes
-            </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg w-96 space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800">Change Profile Picture</h2>
+            <div className="space-y-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePicChange}
+                className="w-full p-2 border border-gray-300 rounded-lg"
+              />
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setIsProfilePicEditing(false)}
+                  className="flex-1 bg-gray-100 text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setIsProfilePicEditing(false)}
+                  className="flex-1 bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
