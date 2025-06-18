@@ -27,23 +27,21 @@ const api = axios.create({
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     },
-    timeout: 30000 // Increased timeout to 30 seconds
+    timeout: 30000 
 });
 
-// Request interceptor
 api.interceptors.request.use(
     (config) => {
-        // Get token from localStorage
+
         const token = localStorage.getItem('token');
         
-        // If token exists, add it to the headers
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Set longer timeout for LLM endpoints
+        
         if (config.url.includes('/api/llm')) {
-            config.timeout = 60000; // 60 seconds for LLM endpoints
+            config.timeout = 60000; 
         }
 
         console.log('Making request:', {
@@ -79,7 +77,7 @@ api.interceptors.response.use(
             response: error.response?.data
         });
 
-        // Only redirect to login if it's not a login request
+
         if (error.response?.status === 401 && !error.config?.url.includes('/auth/login')) {
             localStorage.removeItem('token');
             window.location.href = '/login';
